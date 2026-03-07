@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ElementManager — Live Demo</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <h1><span>Element</span>Manager</h1>
+    <div class="subtitle">ES6 Singleton · Live Demo</div>
+    <div class="badge">Demo</div>
+  </header>
+
+  <!-- ── LEFT: CONTROLS ── -->
+  <aside class="panel-controls">
+
+    <!-- Registry Status -->
+    <div>
+      <div class="section-label">Registry Status</div>
+      <div class="registry-box">
+        <div class="registry-count" id="reg-count">0</div>
+        <div class="registry-count-label">elements tracked</div>
+      </div>
+    </div>
+
+    <!-- CardComponent -->
+    <div>
+      <div class="section-label">CardComponent</div>
+      <button class="btn btn-create" id="btn-card-mount">new Card() — spawn with random ID</button>
+    </div>
+
+    <!-- BannerComponent -->
+    <div>
+      <div class="section-label">BannerComponent</div>
+      <button class="btn btn-create" id="btn-banner-show">show() — createElement</button>
+      <button class="btn btn-return" id="btn-banner-hide" disabled>destroy() — auto-release</button>
+    </div>
+
+    <!-- Custom Element -->
+    <div>
+      <div class="section-label">Custom Element</div>
+      <div class="field">
+        <label>Element ID <span class="field-hint">(slash-separated segments)</span></label>
+        <input type="text" id="custom-id" placeholder="e.g. app/nav/item" />
+      </div>
+      <div class="field">
+        <label>Tag Type</label>
+        <select id="custom-tag">
+          <option value="div">div</option>
+          <option value="section">section</option>
+          <option value="article">article</option>
+          <option value="aside">aside</option>
+          <option value="p">p</option>
+          <option value="span">span</option>
+        </select>
+      </div>
+      <button class="btn btn-create" id="btn-custom-create">createElement</button>
+      <button class="btn btn-return" id="btn-custom-return" disabled>destroyComponent</button>
+    </div>
+
+    <!-- LeakyComponent — Bad Example -->
+    <div>
+      <div class="section-label leak-label">⚠ LeakyComponent — Bad Example</div>
+      <p class="leak-desc">
+        This component creates elements but <em>never calls destroyComponent()</em>
+        before going out of scope. Watch the tree grow and never shrink.
+      </p>
+      <button class="btn btn-leak" id="btn-leak-spawn">spawn() — leak an element</button>
+      <button class="btn btn-leak-reset" id="btn-leak-reset">force-clear leaks (audit)</button>
+    </div>
+
+    <!-- Error Demos -->
+    <div>
+      <div class="section-label">Error Scenarios</div>
+      <button class="btn btn-error" id="btn-err-dupe">Duplicate ID (RangeError)</button>
+      <button class="btn btn-error" id="btn-err-owner">Wrong Owner (Error)</button>
+      <button class="btn btn-error" id="btn-err-missing">Missing ID (ReferenceError)</button>
+      <button class="btn btn-error" id="btn-err-plain-obj">Plain Object Owner (TypeError)</button>
+    </div>
+
+  </aside>
+
+  <!-- ── RIGHT: TREE + CANVAS + LOG ── -->
+  <div class="panel-right">
+
+    <!-- Registry Tree -->
+    <div class="tree-panel">
+      <div class="panel-header">
+        <span class="panel-header-label">Registry Tree</span>
+        <span class="panel-header-hint">ElementId segment hierarchy</span>
+      </div>
+      <div id="tree-container"></div>
+    </div>
+
+    <!-- DOM Render Zone -->
+    <div class="dom-canvas">
+      <div class="panel-header">
+        <span class="panel-header-label">DOM Render Zone</span>
+        <span class="panel-header-hint">managed elements mount here</span>
+      </div>
+      <div id="render-zone"></div>
+    </div>
+
+    <!-- Console Log -->
+    <div class="log-panel">
+      <div class="log-header">
+        <span>Console Output</span>
+        <button class="log-clear" id="btn-log-clear">clear</button>
+      </div>
+      <div id="log-output"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="demo.js"></script>
+</body>
+</html>
