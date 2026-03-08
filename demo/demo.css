@@ -515,3 +515,23 @@ header .subtitle {
   background: #5599ff22;
   border-color: #5599ff;
 }
+
+/* ── Sub-card nesting ── */
+.sub-card-zone {
+  margin-top: 8px;
+}
+
+/* Depth-based left border colour shift */
+.managed-card[data-depth="1"] { border-left-color: #7b9fff; }
+.managed-card[data-depth="2"] { border-left-color: #b47bff; }
+.managed-card[data-depth="3"] { border-left-color: #ff7bea; }
+.managed-card[data-depth="4"] { border-left-color: #ff7b7b; }
+
+/* "Add Sub-card" button — reuses .btn-create colours */
+.card-add-sub-btn {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  width: auto;
+  margin-top: 8px;
+  margin-bottom: 0;
+}

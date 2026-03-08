@@ -16,8 +16,6 @@ const zone        = document.getElementById('render-zone');
 const treeContainer = document.getElementById('tree-container');
 
 // ── Component instances ───────────────────────────────────────────────────────
-/** @type {Map<string, CardComponent>} cardId → CardComponent */
-const cards  = new Map();
 let banner   = new BannerComponent();
 
 // ── Local state ───────────────────────────────────────────────────────────────
@@ -55,11 +53,13 @@ function refreshRegistry() {
  */
 function buildOwnerColorMap() {
   const map = new Map();
-  for (const card of cards.values())    map.set(card,        'leaf-card');
-  if (banner)                            map.set(banner,      'leaf-banner');
-  if (customComp)                        map.set(customComp,  'leaf-custom');
-  // Leak entries have no live reference — they will fall through to leaf-custom
-  // in the tree (coloured yellow), which is fine for the audit demo.
+  for (const id of elementManager.listIds()) {
+    const owner = elementManager.getOwner(id);
+    if (!owner || map.has(owner)) continue;
+    if (owner instanceof CardComponent)   map.set(owner, 'leaf-card');
+    else if (owner === banner)            map.set(owner, 'leaf-banner');
+    else if (owner === customComp)        map.set(owner, 'leaf-custom');
+  }
   return map;
 }
 
@@ -67,25 +67,17 @@ function buildOwnerColorMap() {
 //  CardComponent controls
 // ════════════════════════════════════════════════════════════════════════════════
 function spawnCard() {
-  // Use a short UUID (first 8 chars) as the cardId namespace
-  const cardId = crypto.randomUUID().slice(0, 8);
-  const card   = new CardComponent(cardId);
+  const cardId  = crypto.randomUUID().slice(0, 8);
+  const card    = new CardComponent(cardId);
+  const refresh = () => { refreshRegistry(); refreshTree(treeContainer, buildOwnerColorMap()); };
 
-  card.mount(zone, () => {
-    // Invoked by the card's own close button after returnElement() calls
-    cards.delete(cardId);
-    log(`Card "${cardId}" closed → returnElement ×3  |  registry.size = ${elementManager.size}`, 'warn');
-    refreshRegistry();
-    refreshTree(treeContainer, buildOwnerColorMap());
-  });
+  card.mount(zone,
+    () => { log(`Card "${cardId}" closed → returnElement ×4  |  registry.size = ${elementManager.size}`, 'warn'); refresh(); },
+    refresh,
+  );
 
-  cards.set(cardId, card);
-
-  const owned = elementManager.listIdsForComponent(card).map(id => id.toString()).join(', ');
-  log(`CardComponent("${cardId}").mount() → createElement ×3`, 'ok');
-  log(`tracked: [${owned}]  |  cards alive: ${cards.size}  |  registry.size = ${elementManager.size}`, 'info');
-  refreshRegistry();
-  refreshTree(treeContainer, buildOwnerColorMap());
+  log(`CardComponent("${cardId}").mount() → createElement ×4`, 'ok');
+  refresh();
 }
 
 document.getElementById('btn-card-mount').addEventListener('click', () => {
