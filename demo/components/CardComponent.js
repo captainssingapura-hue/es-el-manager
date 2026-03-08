@@ -1,6 +1,6 @@
 /**
  * CardComponent.js
- * Good example — composes ManagedComponent, uses ElementId for multi-level ids.
+ * Good example — composes ManagedComponent via DomOpsParty, uses ElementId for multi-level ids.
  *
  * Each instance receives a unique cardId which is used as the top-level
  * segment of every ElementId it creates. Sub-cards extend the segment path:
@@ -15,13 +15,29 @@
  *
  * Multiple cards can coexist without id collisions because every element
  * lives under its own cardId namespace in the registry tree.
+ *
+ * Party integration
+ * ─────────────────
+ * Every card joins DomOpsParty as a named branch so the party tree mirrors
+ * the card hierarchy:
+ *
+ *   domOpsParty (L0)
+ *     └─ branch 'a1b2c3'  (L1, top-level card)
+ *          └─ branch 'x9y8z7'  (L2, sub-card)
+ *               └─ …
+ *
+ * The card's ManagedComponent is obtained via branch.join(this) so the
+ * party is the sole source of ManagedComponent instances for cards.
+ * When a card closes or is destroyed, it dissolves its own branch.
  */
 
-import { elementManager, ManagedComponent } from '../../src/elementManager.js';
-import { ElementId }                        from '../../src/ElementId.js';
+import { elementManager }  from '../../src/elementManager.js';
+import { ElementId }       from '../../src/ElementId.js';
+import { domOpsParty }     from '../../src/party/DomOpsParty.js';
 
 export class CardComponent {
-  #mc           = new ManagedComponent(this);
+  #mc           = null;  // set in constructor via branch.join(this)
+  #branch       = null;  // DomOpsParty branch owned by this card
   #cardId       = null;
   #depth        = 0;
   #segments     = null;
@@ -39,16 +55,23 @@ export class CardComponent {
    * @param {string} cardId - Unique identifier for this card instance.
    *                          Used as the root segment of all child ElementIds.
    * @param {object} [opts]
-   * @param {number} [opts.depth=0]    - Nesting depth; controls sub-card button visibility.
-   * @param {string[]} [opts.segments] - Full segment path; defaults to [cardId].
+   * @param {number} [opts.depth=0]         - Nesting depth; controls sub-card button visibility.
+   * @param {string[]} [opts.segments]      - Full segment path; defaults to [cardId].
+   * @param {_DomOpsPartyBase} [opts.parentBranch] - Party branch to nest under.
+   *                                          Top-level cards omit this (uses domOpsParty root).
    */
-  constructor(cardId, { depth = 0, segments = null } = {}) {
+  constructor(cardId, { depth = 0, segments = null, parentBranch = null } = {}) {
     if (typeof cardId !== 'string' || cardId.trim() === '') {
       throw new TypeError(`[CardComponent] cardId must be a non-empty string. Received: ${cardId}`);
     }
     this.#cardId   = cardId;
     this.#depth    = depth;
     this.#segments = segments ?? [cardId];
+
+    // Create a named branch for this card and obtain our ManagedComponent from it.
+    // Top-level cards branch off the root party; sub-cards branch off their parent's branch.
+    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId);
+    this.#mc     = this.#branch.join(this);
 
     this.#idTitle = new ElementId([...this.#segments, 'title']);
     this.#idBody  = new ElementId([...this.#segments, 'body']);
@@ -117,8 +140,9 @@ export class CardComponent {
   #spawnSubCard() {
     const childId = crypto.randomUUID().slice(0, 8);
     const child   = new CardComponent(childId, {
-      depth:    this.#depth + 1,
-      segments: [...this.#segments, childId],
+      depth:        this.#depth + 1,
+      segments:     [...this.#segments, childId],
+      parentBranch: this.#branch,   // sub-card branches off this card's party branch
     });
     this.#children.add(child);
     child.mount(
@@ -143,6 +167,12 @@ export class CardComponent {
     elementManager.returnElement(this.#mc, this.#idTitle);
     this.#wrapper?.remove();
     this.#wrapper = null;
+
+    // Dissolve this card's party branch (children's branches were already
+    // dissolved recursively when their destroyComponent calls ran above).
+    this.#branch?.parent?.dissolveBranch(this.#cardId);
+    this.#branch = null;
+
     this.#onClose?.();
   }
 
@@ -151,5 +181,9 @@ export class CardComponent {
     this.#children.clear();
     this.#wrapper?.remove();
     this.#wrapper = null;
+
+    // Dissolve party branch (same as #close path; guard against double-call).
+    this.#branch?.parent?.dissolveBranch(this.#cardId);
+    this.#branch = null;
   }
 }

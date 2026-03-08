@@ -10,10 +10,13 @@ import { CardComponent }                    from './components/CardComponent.js'
 import { BannerComponent }                  from './components/BannerComponent.js';
 import { LeakyComponent }                   from './components/LeakyComponent.js';
 import { refreshTree }                      from './registryTree.js';
+import { refreshPartyTree }                from './partyTree.js';
+import { domOpsParty }                     from '../src/party/DomOpsParty.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
-const zone        = document.getElementById('render-zone');
-const treeContainer = document.getElementById('tree-container');
+const zone               = document.getElementById('render-zone');
+const treeContainer      = document.getElementById('tree-container');
+const partyTreeContainer = document.getElementById('party-tree-container');
 
 // ── Component instances ───────────────────────────────────────────────────────
 let banner   = new BannerComponent();
@@ -69,7 +72,7 @@ function buildOwnerColorMap() {
 function spawnCard() {
   const cardId  = crypto.randomUUID().slice(0, 8);
   const card    = new CardComponent(cardId);
-  const refresh = () => { refreshRegistry(); refreshTree(treeContainer, buildOwnerColorMap()); };
+  const refresh = () => { refreshRegistry(); refreshTree(treeContainer, buildOwnerColorMap()); refreshParty(); };
 
   card.mount(zone,
     () => { log(`Card "${cardId}" closed → returnElement ×4  |  registry.size = ${elementManager.size}`, 'warn'); refresh(); },
@@ -206,6 +209,68 @@ document.getElementById('btn-err-plain-obj').addEventListener('click', () => {
 });
 
 // ════════════════════════════════════════════════════════════════════════════════
+//  DomOpsParty controls
+// ════════════════════════════════════════════════════════════════════════════════
+let partyMemberSeq = 0;
+
+/** Syncs the branch <select> and dependent button states, then redraws the tree. */
+function refreshParty() {
+  const sel      = document.getElementById('party-branch-select');
+  const branches = domOpsParty.listBranches();
+
+  sel.innerHTML = branches.length === 0
+    ? '<option value="">— no branches yet —</option>'
+    : branches.map(b => `<option value="${b}">${b}</option>`).join('');
+
+  const hasBranches = branches.length > 0;
+  document.getElementById('btn-party-join-branch').disabled  = !hasBranches;
+  document.getElementById('btn-party-dissolve').disabled     = !hasBranches;
+
+  refreshPartyTree(partyTreeContainer, domOpsParty);
+}
+
+document.getElementById('btn-party-join-root').addEventListener('click', () => {
+  partyMemberSeq++;
+  const label = `member-${partyMemberSeq}`;
+  domOpsParty.join({ label });
+  log(`domOpsParty.join({ label: "${label}" }) → ManagedComponent  |  root members: ${domOpsParty.memberCount}`, 'ok');
+  refreshParty();
+});
+
+document.getElementById('btn-party-create-branch').addEventListener('click', () => {
+  const name = document.getElementById('party-branch-name').value.trim();
+  if (!name) { log('Branch name is empty.', 'warn'); return; }
+  try {
+    domOpsParty.createBranch(name);
+    document.getElementById('party-branch-name').value = '';
+    log(`domOpsParty.createBranch("${name}") → DomOpsPartyL1  |  root branches: ${domOpsParty.branchCount}`, 'ok');
+    refreshParty();
+  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
+});
+
+document.getElementById('btn-party-join-branch').addEventListener('click', () => {
+  const name = document.getElementById('party-branch-select').value;
+  if (!name) { log('No branch selected.', 'warn'); return; }
+  const branch = domOpsParty.getBranch(name);
+  if (!branch) { log(`Branch "${name}" not found.`, 'error'); return; }
+  partyMemberSeq++;
+  const label = `member-${partyMemberSeq}`;
+  branch.join({ label });
+  log(`branch("${name}").join({ label: "${label}" }) → ManagedComponent  |  branch members: ${branch.memberCount}`, 'ok');
+  refreshParty();
+});
+
+document.getElementById('btn-party-dissolve').addEventListener('click', () => {
+  const name = document.getElementById('party-branch-select').value;
+  if (!name) { log('No branch selected.', 'warn'); return; }
+  try {
+    domOpsParty.dissolveBranch(name);
+    log(`domOpsParty.dissolveBranch("${name}") ✓  |  root branches: ${domOpsParty.branchCount}`, 'warn');
+    refreshParty();
+  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
 //  LeakyComponent controls
 // ════════════════════════════════════════════════════════════════════════════════
 let leakCount = 0;
@@ -268,5 +333,7 @@ document.getElementById('custom-id').placeholder = 'e.g. app/nav/item';
 
 log('ElementManager singleton initialised.  registry.size = 0', 'info');
 log('Element IDs are now ElementId instances — e.g. new ElementId(["card","title"])', 'info');
+log('DomOpsParty singleton initialised.  root secretary enrolled automatically.', 'info');
 refreshRegistry();
 refreshTree(treeContainer, buildOwnerColorMap());
+refreshParty();
