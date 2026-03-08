@@ -4,14 +4,12 @@
  * CardComponent, BannerComponent, and LeakyComponent.
  */
 
-import { elementManager } from './elementManager.js';
-import { ManagedComponent } from './ManagedComponent.js';
-
-import { ElementId }        from './ElementId.js';
-import { CardComponent }    from './CardComponent.js';
-import { BannerComponent }  from './BannerComponent.js';
-import { LeakyComponent }   from './LeakyComponent.js';
-import { refreshTree }      from './registryTree.js';
+import { elementManager, ManagedComponent } from '../src/elementManager.js';
+import { ElementId }                        from '../src/ElementId.js';
+import { CardComponent }                    from './components/CardComponent.js';
+import { BannerComponent }                  from './components/BannerComponent.js';
+import { LeakyComponent }                   from './components/LeakyComponent.js';
+import { refreshTree }                      from './registryTree.js';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const zone        = document.getElementById('render-zone');
@@ -110,7 +108,7 @@ document.getElementById('btn-banner-show').addEventListener('click', () => {
     document.getElementById('btn-banner-show').disabled = true;
     document.getElementById('btn-banner-hide').disabled = false;
     refreshRegistry();
-refreshTree(treeContainer, buildOwnerColorMap());
+    refreshTree(treeContainer, buildOwnerColorMap());
   } catch (e) { log(e.message, 'error'); }
 });
 
@@ -125,7 +123,7 @@ document.getElementById('btn-banner-hide').addEventListener('click', () => {
     document.getElementById('btn-banner-show').disabled = false;
     document.getElementById('btn-banner-hide').disabled = true;
     refreshRegistry();
-refreshTree(treeContainer, buildOwnerColorMap());
+    refreshTree(treeContainer, buildOwnerColorMap());
   } catch (e) { log(e.message, 'error'); }
 });
 
@@ -163,7 +161,7 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
     document.getElementById('btn-custom-create').disabled = true;
     document.getElementById('btn-custom-return').disabled = false;
     refreshRegistry();
-refreshTree(treeContainer, buildOwnerColorMap());
+    refreshTree(treeContainer, buildOwnerColorMap());
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
@@ -178,7 +176,7 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
     document.getElementById('btn-custom-return').disabled = true;
     document.getElementById('custom-id').value = '';
     refreshRegistry();
-refreshTree(treeContainer, buildOwnerColorMap());
+    refreshTree(treeContainer, buildOwnerColorMap());
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
@@ -265,7 +263,7 @@ document.getElementById('btn-leak-reset').addEventListener('click', () => {
   leakedIds.length = 0;
   leakCount = 0;
   refreshRegistry();
-refreshTree(treeContainer, buildOwnerColorMap());
+  refreshTree(treeContainer, buildOwnerColorMap());
 });
 
 // ════════════════════════════════════════════════════════════════════════════════

@@ -3,20 +3,23 @@
  * Demo component — creates a single managed element (div) via ElementManager.
  */
 
-import { elementManager } from './elementManager.js';
+import { elementManager, ManagedComponent } from '../../src/elementManager.js';
+import { ElementId }                        from '../../src/ElementId.js';
 
-export class BannerComponent {
+const BANNER_ID = new ElementId(['site', 'banner']);
+
+export class BannerComponent extends ManagedComponent {
   #bannerEl = null;
   #wrapper  = null;
 
   /**
    * Shows the banner inside the given zone element.
-   * Creates one managed element: 'site-banner' (div).
+   * Creates one managed element: ElementId(['site', 'banner']).
    *
    * @param {HTMLElement} zone - Container to prepend into.
    */
   show(zone) {
-    this.#bannerEl = elementManager.createElement(this, 'site-banner', 'div');
+    this.#bannerEl = elementManager.createElement(this, BANNER_ID, 'div');
     this.#bannerEl.textContent = '📢  Banner managed by BannerComponent';
 
     this.#wrapper = document.createElement('div');
@@ -24,7 +27,7 @@ export class BannerComponent {
 
     const tag = document.createElement('div');
     tag.className = 'tag';
-    tag.textContent = '▸ BannerComponent  ·  owner: banner  ·  id: site-banner';
+    tag.textContent = `▸ BannerComponent  ·  ${BANNER_ID}`;
 
     this.#wrapper.append(tag, this.#bannerEl);
     zone.prepend(this.#wrapper);
@@ -35,9 +38,15 @@ export class BannerComponent {
    * Must be called before the component goes out of scope.
    */
   hide() {
-    elementManager.returnElement(this, 'site-banner');
+    elementManager.returnElement(this, BANNER_ID);
     this.#wrapper?.remove();
     this.#bannerEl = null;
     this.#wrapper  = null;
+  }
+
+  /** @override */
+  onDestroy() {
+    this.#wrapper?.remove();
+    this.#wrapper = null;
   }
 }

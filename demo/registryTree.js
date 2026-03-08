@@ -9,7 +9,7 @@
  * when root segments are dynamic (e.g. UUID-prefixed card ids).
  */
 
-import { elementManager } from './elementManager.js';
+import { elementManager } from '../src/elementManager.js';
 
 // ── Internal tree node ────────────────────────────────────────────────────────
 

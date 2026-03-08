@@ -14,9 +14,8 @@
  * lives under its own cardId namespace in the registry tree.
  */
 
-import { elementManager }  from './elementManager.js';
-import { ManagedComponent } from './ManagedComponent.js';
-import { ElementId }        from './ElementId.js';
+import { elementManager, ManagedComponent } from '../../src/elementManager.js';
+import { ElementId }                        from '../../src/ElementId.js';
 
 export class CardComponent extends ManagedComponent {
   #cardId   = null;

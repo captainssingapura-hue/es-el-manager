@@ -7,9 +7,8 @@
  * called before the instance goes out of scope.
  */
 
-import { elementManager } from './elementManager.js';
-import { ManagedComponent } from './ManagedComponent.js';
-import { ElementId }                        from './ElementId.js';
+import { elementManager, ManagedComponent } from '../../src/elementManager.js';
+import { ElementId }                        from '../../src/ElementId.js';
 
 export class LeakyComponent extends ManagedComponent {
 
