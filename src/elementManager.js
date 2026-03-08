@@ -195,13 +195,6 @@ class ElementManager {
   }
 
   /**
-   * All ElementIds whose key starts with the given prefix ElementId.
-   * Useful for bulk operations on a component subtree.
-   *
-   * @param {ElementId} prefix
-   * @returns {ElementId[]}
-   */
-  /**
    * Returns the owner component for the given ElementId, or null if not found.
    *
    * @param {ElementId} elementId
@@ -212,6 +205,13 @@ class ElementManager {
     return this.#registry.get(elementId.key)?.owner ?? null;
   }
 
+  /**
+   * All ElementIds whose key starts with the given prefix ElementId.
+   * Useful for bulk operations on a component subtree.
+   *
+   * @param {ElementId} prefix
+   * @returns {ElementId[]}
+   */
   listIdsByPrefix(prefix) {
     this.#assertElementId(prefix, 'listIdsByPrefix');
     return [...this.#registry.values()]
