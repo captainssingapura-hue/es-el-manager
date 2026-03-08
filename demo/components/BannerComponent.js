@@ -8,9 +8,12 @@ import { ElementId }                        from '../../src/ElementId.js';
 
 const BANNER_ID = new ElementId(['site', 'banner']);
 
-export class BannerComponent extends ManagedComponent {
+export class BannerComponent {
+  #mc       = new ManagedComponent(this);
   #bannerEl = null;
   #wrapper  = null;
+
+  get mc() { return this.#mc; }
 
   /**
    * Shows the banner inside the given zone element.
@@ -19,7 +22,7 @@ export class BannerComponent extends ManagedComponent {
    * @param {HTMLElement} zone - Container to prepend into.
    */
   show(zone) {
-    this.#bannerEl = elementManager.createElement(this, BANNER_ID, 'div');
+    this.#bannerEl = elementManager.createElement(this.#mc, BANNER_ID, 'div');
     this.#bannerEl.textContent = '📢  Banner managed by BannerComponent';
 
     this.#wrapper = document.createElement('div');
@@ -38,13 +41,12 @@ export class BannerComponent extends ManagedComponent {
    * Must be called before the component goes out of scope.
    */
   hide() {
-    elementManager.returnElement(this, BANNER_ID);
+    elementManager.returnElement(this.#mc, BANNER_ID);
     this.#wrapper?.remove();
     this.#bannerEl = null;
     this.#wrapper  = null;
   }
 
-  /** @override */
   onDestroy() {
     this.#wrapper?.remove();
     this.#wrapper = null;

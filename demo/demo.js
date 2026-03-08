@@ -56,9 +56,9 @@ function buildOwnerColorMap() {
   for (const id of elementManager.listIds()) {
     const owner = elementManager.getOwner(id);
     if (!owner || map.has(owner)) continue;
-    if (owner instanceof CardComponent)   map.set(owner, 'leaf-card');
-    else if (owner === banner)            map.set(owner, 'leaf-banner');
-    else if (owner === customComp)        map.set(owner, 'leaf-custom');
+    if (owner.component instanceof CardComponent) map.set(owner, 'leaf-card');
+    else if (owner.component === banner)          map.set(owner, 'leaf-banner');
+    else if (owner === customComp)                map.set(owner, 'leaf-custom');
   }
   return map;
 }
@@ -94,7 +94,7 @@ document.getElementById('btn-banner-show').addEventListener('click', () => {
   try {
     banner.show(zone);
     bannerVisible = true;
-    const owned = elementManager.listIdsForComponent(banner).map(id => id.toString()).join(', ');
+    const owned = elementManager.listIdsForComponent(banner.mc).map(id => id.toString()).join(', ');
     log(`BannerComponent.show() → createElement(["site","banner"])`, 'ok');
     log(`tracked by manager for banner: [${owned}]  |  registry.size = ${elementManager.size}`, 'info');
     document.getElementById('btn-banner-show').disabled = true;
@@ -107,7 +107,7 @@ document.getElementById('btn-banner-show').addEventListener('click', () => {
 document.getElementById('btn-banner-hide').addEventListener('click', () => {
   if (!bannerVisible) return;
   try {
-    elementManager.destroyComponent(banner);
+    elementManager.destroyComponent(banner.mc);
     bannerVisible = false;
     log('elementManager.destroyComponent(banner) → onDestroy() + removeAllElementsForComponent()', 'warn');
     log(`registry.size = ${elementManager.size}`, 'info');
@@ -133,9 +133,7 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
   try {
     customId = new ElementId(segments);
 
-    customComp = new (class extends ManagedComponent {
-      onDestroy() { customWrapper?.remove(); }
-    })();
+    customComp = new ManagedComponent({ onDestroy() { customWrapper?.remove(); } });
 
     const el = elementManager.createElement(customComp, customId, tagVal);
 
@@ -179,7 +177,7 @@ document.getElementById('btn-err-dupe').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount CardComponent or BannerComponent first.', 'warn'); return; }
   try {
-    const fakeComp = new (class extends ManagedComponent { onDestroy() {} })();
+    const fakeComp = new ManagedComponent(null);
     elementManager.createElement(fakeComp, ids[0], 'span');
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
@@ -188,14 +186,14 @@ document.getElementById('btn-err-owner').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount an element first.', 'warn'); return; }
   try {
-    const impostor = new (class extends ManagedComponent { onDestroy() {} })();
+    const impostor = new ManagedComponent(null);
     elementManager.returnElement(impostor, ids[0]);
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
 document.getElementById('btn-err-missing').addEventListener('click', () => {
   try {
-    const ghost  = new (class extends ManagedComponent { onDestroy() {} })();
+    const ghost  = new ManagedComponent(null);
     const ghostId = new ElementId(['ghost', 'element', 'xyz']);
     elementManager.returnElement(ghost, ghostId);
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
@@ -242,7 +240,7 @@ document.getElementById('btn-leak-reset').addEventListener('click', () => {
   if (leakedIds.length === 0) { log('No leaks to clear.', 'info'); return; }
 
   for (const id of leakedIds) {
-    const impostor = new (class extends ManagedComponent { onDestroy() {} })();
+    const impostor = new ManagedComponent(null);
     try {
       elementManager.returnElement(impostor, id);
     } catch (e) {

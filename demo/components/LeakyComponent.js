@@ -2,7 +2,7 @@
  * LeakyComponent.js
  * ⚠️  BAD EXAMPLE — intentionally leaks managed elements.
  *
- * Extends ManagedComponent correctly, so the manager accepts it.
+ * Composes ManagedComponent correctly, so the manager accepts it.
  * The leak occurs because elementManager.destroyComponent() is never
  * called before the instance goes out of scope.
  */
@@ -10,7 +10,10 @@
 import { elementManager, ManagedComponent } from '../../src/elementManager.js';
 import { ElementId }                        from '../../src/ElementId.js';
 
-export class LeakyComponent extends ManagedComponent {
+export class LeakyComponent {
+  #mc = new ManagedComponent(this);
+
+  get mc() { return this.#mc; }
 
   /**
    * Creates a managed element and abandons the instance without
@@ -21,11 +24,11 @@ export class LeakyComponent extends ManagedComponent {
    */
   spawn(index) {
     const id = new ElementId(['leak', `item-${index}`, `t${Date.now()}`]);
-    const el = elementManager.createElement(this, id, 'div');
+    const el = elementManager.createElement(this.#mc, id, 'div');
     el.textContent = `Leaked element #${index}  ·  id: "${id}"`;
     return { instance: this, id };
   }
 
-  /** @override — nothing to tear down */
+  /** onDestroy — nothing to tear down */
   onDestroy() {}
 }
