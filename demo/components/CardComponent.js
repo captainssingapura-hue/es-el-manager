@@ -18,17 +18,28 @@
  *
  * Party integration
  * ─────────────────
- * Every card joins DomOpsParty as a named branch so the party tree mirrors
- * the card hierarchy:
+ * Every card owns a named party branch so the party tree mirrors the card
+ * hierarchy:
  *
  *   domOpsParty (L0)
  *     └─ branch 'a1b2c3'  (L1, top-level card)
  *          └─ branch 'x9y8z7'  (L2, sub-card)
  *               └─ …
  *
- * The card's ManagedComponent is obtained via branch.join(this) so the
- * party is the sole source of ManagedComponent instances for cards.
- * When a card closes or is destroyed, it dissolves its own branch.
+ * Each branch is created with createBranch(cardId, this) so the secretary
+ * wraps the card itself — destroyComponent(secretary) routes to this
+ * card's onDestroy().
+ *
+ * Teardown
+ * ────────
+ * Cards self-close via the ✕ button (the sole teardown path):
+ *   1. Remove the DOM wrapper  (cascade-removes all child card wrappers too).
+ *   2. branch.dissolve()       (recursively cleans registry + party for the
+ *                               entire subtree — no per-element returnElement).
+ *
+ * No onDestroy() is defined — destroyComponent() is not used for cards.
+ * No child-component tracking is needed — the party branch tree already mirrors
+ * the hierarchy, so dissolve() handles every descendant automatically.
  */
 
 import { elementManager }  from '../../src/elementManager.js';
@@ -36,8 +47,7 @@ import { ElementId }       from '../../src/ElementId.js';
 import { domOpsParty }     from '../../src/party/DomOpsParty.js';
 
 export class CardComponent {
-  #mc           = null;  // set in constructor via branch.join(this)
-  #branch       = null;  // DomOpsParty branch owned by this card
+  #branch       = null;  // DomOpsParty branch; secretary wraps this card instance
   #cardId       = null;
   #depth        = 0;
   #segments     = null;
@@ -47,7 +57,6 @@ export class CardComponent {
   #idAddSub     = null;   // null when depth >= 5
   #wrapper      = null;
   #childrenZone = null;   // plain unmanaged div; holds sub-card wrappers
-  #children     = new Set();  // live CardComponent child instances
   #onClose      = null;
   #onRefresh    = null;
 
@@ -55,10 +64,10 @@ export class CardComponent {
    * @param {string} cardId - Unique identifier for this card instance.
    *                          Used as the root segment of all child ElementIds.
    * @param {object} [opts]
-   * @param {number} [opts.depth=0]         - Nesting depth; controls sub-card button visibility.
-   * @param {string[]} [opts.segments]      - Full segment path; defaults to [cardId].
+   * @param {number} [opts.depth=0]              - Nesting depth; controls sub-card button visibility.
+   * @param {string[]} [opts.segments]           - Full segment path; defaults to [cardId].
    * @param {_DomOpsPartyBase} [opts.parentBranch] - Party branch to nest under.
-   *                                          Top-level cards omit this (uses domOpsParty root).
+   *                                               Top-level cards omit this (uses domOpsParty root).
    */
   constructor(cardId, { depth = 0, segments = null, parentBranch = null } = {}) {
     if (typeof cardId !== 'string' || cardId.trim() === '') {
@@ -68,10 +77,9 @@ export class CardComponent {
     this.#depth    = depth;
     this.#segments = segments ?? [cardId];
 
-    // Create a named branch for this card and obtain our ManagedComponent from it.
-    // Top-level cards branch off the root party; sub-cards branch off their parent's branch.
-    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId);
-    this.#mc     = this.#branch.join(this);
+    // Secretary wraps this card so destroyComponent(branch.secretary) → this.onDestroy().
+    // Top-level cards branch off the root; sub-cards branch off their parent's branch.
+    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId, this);
 
     this.#idTitle = new ElementId([...this.#segments, 'title']);
     this.#idBody  = new ElementId([...this.#segments, 'body']);
@@ -82,7 +90,7 @@ export class CardComponent {
   }
 
   get cardId() { return this.#cardId; }
-  get mc()     { return this.#mc; }
+  get mc()     { return this.#branch?.secretary ?? null; }
 
   /**
    * @param {HTMLElement} zone        - Container to append into.
@@ -93,15 +101,15 @@ export class CardComponent {
     this.#onClose   = onClose;
     this.#onRefresh = onRefresh;
 
-    const titleEl = elementManager.createElement(this.#mc, this.#idTitle, 'h2');
-    const bodyEl  = elementManager.createElement(this.#mc, this.#idBody,  'p');
-    const closeEl = elementManager.createElement(this.#mc, this.#idClose, 'button');
+    const titleEl = elementManager.createElement(this.#branch.secretary, this.#idTitle, 'h2');
+    const bodyEl  = elementManager.createElement(this.#branch.secretary, this.#idBody,  'p');
+    const closeEl = elementManager.createElement(this.#branch.secretary, this.#idClose, 'button');
 
     titleEl.textContent = `Card  ·  ${this.#cardId}`;
     bodyEl.textContent  = `Elements tracked under namespace "${this.#segments.join('.')}".`;
     closeEl.textContent = '✕';
     closeEl.className   = 'card-close-btn';
-    closeEl.title       = 'Close — calls returnElement() for each owned id';
+    closeEl.title       = 'Close — branch.dissolve() removes all owned elements';
     closeEl.addEventListener('click', () => this.#close());
 
     this.#wrapper = document.createElement('div');
@@ -121,7 +129,7 @@ export class CardComponent {
     this.#wrapper.append(tag, header, bodyEl);
 
     if (this.#idAddSub) {
-      const addSubEl = elementManager.createElement(this.#mc, this.#idAddSub, 'button');
+      const addSubEl = elementManager.createElement(this.#branch.secretary, this.#idAddSub, 'button');
       addSubEl.textContent = '+ Add Sub-card';
       addSubEl.className   = 'btn btn-create card-add-sub-btn';
       addSubEl.title       = `Add a nested sub-card (depth ${this.#depth + 1}/5)`;
@@ -142,48 +150,29 @@ export class CardComponent {
     const child   = new CardComponent(childId, {
       depth:        this.#depth + 1,
       segments:     [...this.#segments, childId],
-      parentBranch: this.#branch,   // sub-card branches off this card's party branch
+      parentBranch: this.#branch,
     });
-    this.#children.add(child);
     child.mount(
       this.#childrenZone,
-      () => { this.#children.delete(child); this.#onRefresh?.(); },  // onClose
-      this.#onRefresh,                                                 // onRefresh (pass down)
+      () => this.#onRefresh?.(),   // onClose — branch.dissolve() already cleaned registry
+      this.#onRefresh,              // onRefresh (propagate up)
     );
     this.#onRefresh?.();
   }
 
   /**
-   * Close handler — destroys children, returns each own element individually,
-   * then removes the wrapper.
+   * Close handler — remove wrapper (cascades to all child wrappers in DOM),
+   * then dissolve the branch (recursively cleans registry + party subtree).
+   *
+   * This is the sole teardown path for cards. No onDestroy() is defined:
+   * cards are never torn down via elementManager.destroyComponent() — the
+   * dissolve() call here is sufficient and no external caller needs the hook.
    */
   #close() {
-    for (const child of this.#children) elementManager.destroyComponent(child.mc);
-    this.#children.clear();
-
-    if (this.#idAddSub) elementManager.returnElement(this.#mc, this.#idAddSub);
-    elementManager.returnElement(this.#mc, this.#idClose);
-    elementManager.returnElement(this.#mc, this.#idBody);
-    elementManager.returnElement(this.#mc, this.#idTitle);
     this.#wrapper?.remove();
     this.#wrapper = null;
-
-    // Dissolve this card's party branch (children's branches were already
-    // dissolved recursively when their destroyComponent calls ran above).
-    this.#branch?.parent?.dissolveBranch(this.#cardId);
+    this.#branch?.dissolve();
     this.#branch = null;
-
     this.#onClose?.();
-  }
-
-  onDestroy() {
-    for (const child of this.#children) elementManager.destroyComponent(child.mc);
-    this.#children.clear();
-    this.#wrapper?.remove();
-    this.#wrapper = null;
-
-    // Dissolve party branch (same as #close path; guard against double-call).
-    this.#branch?.parent?.dissolveBranch(this.#cardId);
-    this.#branch = null;
   }
 }

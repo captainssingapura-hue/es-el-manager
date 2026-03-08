@@ -606,6 +606,17 @@ header .subtitle {
   color: #555a66;
 }
 
+.party-member-id {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #a78bfa;
+  background: #7c3aed18;
+  border: 1px solid #7c3aed33;
+  border-radius: 2px;
+  padding: 0 3px;
+  line-height: 14px;
+}
+
 /* ── Branch children (recursive indent) ── */
 .party-branches {
   margin-left: 18px;

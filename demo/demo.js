@@ -4,7 +4,7 @@
  * CardComponent, BannerComponent, and LeakyComponent.
  */
 
-import { elementManager, ManagedComponent } from '../src/elementManager.js';
+import { elementManager } from '../src/elementManager.js';
 import { ElementId }                        from '../src/ElementId.js';
 import { CardComponent }                    from './components/CardComponent.js';
 import { BannerComponent }                  from './components/BannerComponent.js';
@@ -12,6 +12,12 @@ import { LeakyComponent }                   from './components/LeakyComponent.js
 import { refreshTree }                      from './registryTree.js';
 import { refreshPartyTree }                from './partyTree.js';
 import { domOpsParty }                     from '../src/party/DomOpsParty.js';
+
+// ── Debug exposure ────────────────────────────────────────────────────────────
+// Access live state from the browser console:
+//   __demo.party          → domOpsParty singleton (browse branches, members, …)
+//   __demo.elementManager → ElementManager singleton (registry, listIds(), …)
+window.__demo = { party: domOpsParty, elementManager };
 
 // ── DOM refs ──────────────────────────────────────────────────────────────────
 const zone               = document.getElementById('render-zone');
@@ -104,6 +110,7 @@ document.getElementById('btn-banner-show').addEventListener('click', () => {
     document.getElementById('btn-banner-hide').disabled = false;
     refreshRegistry();
     refreshTree(treeContainer, buildOwnerColorMap());
+    refreshParty();
   } catch (e) { log(e.message, 'error'); }
 });
 
@@ -119,6 +126,7 @@ document.getElementById('btn-banner-hide').addEventListener('click', () => {
     document.getElementById('btn-banner-hide').disabled = true;
     refreshRegistry();
     refreshTree(treeContainer, buildOwnerColorMap());
+    refreshParty();
   } catch (e) { log(e.message, 'error'); }
 });
 
@@ -136,7 +144,7 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
   try {
     customId = new ElementId(segments);
 
-    customComp = new ManagedComponent({ onDestroy() { customWrapper?.remove(); } });
+    customComp = domOpsParty.join({ onDestroy() { customWrapper?.remove(); } });
 
     const el = elementManager.createElement(customComp, customId, tagVal);
 
@@ -155,6 +163,7 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
     document.getElementById('btn-custom-return').disabled = false;
     refreshRegistry();
     refreshTree(treeContainer, buildOwnerColorMap());
+    refreshParty();
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
@@ -162,6 +171,7 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
   if (!customComp || !customId) return;
   try {
     elementManager.destroyComponent(customComp);
+    if (domOpsParty.hasMember(customComp)) domOpsParty.expel(customComp);
     log(`elementManager.destroyComponent(customComp) → onDestroy() + removeAllElementsForComponent() ✓`, 'warn');
     log(`registry.size = ${elementManager.size}`, 'info');
     customComp = customId = customWrapper = null;
@@ -170,6 +180,7 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
     document.getElementById('custom-id').value = '';
     refreshRegistry();
     refreshTree(treeContainer, buildOwnerColorMap());
+    refreshParty();
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
@@ -180,7 +191,7 @@ document.getElementById('btn-err-dupe').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount CardComponent or BannerComponent first.', 'warn'); return; }
   try {
-    const fakeComp = new ManagedComponent(null);
+    const fakeComp = domOpsParty.join(null);
     elementManager.createElement(fakeComp, ids[0], 'span');
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
@@ -189,14 +200,14 @@ document.getElementById('btn-err-owner').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount an element first.', 'warn'); return; }
   try {
-    const impostor = new ManagedComponent(null);
+    const impostor = domOpsParty.join(null);
     elementManager.returnElement(impostor, ids[0]);
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
 document.getElementById('btn-err-missing').addEventListener('click', () => {
   try {
-    const ghost  = new ManagedComponent(null);
+    const ghost   = domOpsParty.join(null);
     const ghostId = new ElementId(['ghost', 'element', 'xyz']);
     elementManager.returnElement(ghost, ghostId);
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
@@ -265,7 +276,9 @@ document.getElementById('btn-party-dissolve').addEventListener('click', () => {
   if (!name) { log('No branch selected.', 'warn'); return; }
   try {
     domOpsParty.dissolveBranch(name);
-    log(`domOpsParty.dissolveBranch("${name}") ✓  |  root branches: ${domOpsParty.branchCount}`, 'warn');
+    log(`domOpsParty.dissolveBranch("${name}") ✓  — registry cleaned up  |  root branches: ${domOpsParty.branchCount}`, 'warn');
+    refreshRegistry();
+    refreshTree(treeContainer, buildOwnerColorMap());
     refreshParty();
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
@@ -299,13 +312,14 @@ document.getElementById('btn-leak-spawn').addEventListener('click', () => {
   log(`⚠ registry.size = ${elementManager.size}  — orphaned: [${leakedIds.map(i=>i.key).join(', ')}]`, 'warn');
   refreshRegistry();
   refreshTree(treeContainer, buildOwnerColorMap());
+  refreshParty();
 });
 
 document.getElementById('btn-leak-reset').addEventListener('click', () => {
   if (leakedIds.length === 0) { log('No leaks to clear.', 'info'); return; }
 
   for (const id of leakedIds) {
-    const impostor = new ManagedComponent(null);
+    const impostor = domOpsParty.join(null);
     try {
       elementManager.returnElement(impostor, id);
     } catch (e) {
@@ -319,6 +333,7 @@ document.getElementById('btn-leak-reset').addEventListener('click', () => {
   leakCount = 0;
   refreshRegistry();
   refreshTree(treeContainer, buildOwnerColorMap());
+  refreshParty();
 });
 
 // ════════════════════════════════════════════════════════════════════════════════

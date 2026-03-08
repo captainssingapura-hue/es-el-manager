@@ -5,6 +5,9 @@
  * Not part of the public API — import from DomOpsParty.js instead.
  *
  * Responsibilities:
+ *  - Registers the ManagedComponent constructor token at module load time so
+ *    that _mc() is the only way to create ManagedComponent instances anywhere
+ *    in the application.
  *  - Holds all private state: name, depth, parent, secretary, members, branches.
  *  - Implements the full membership API (join, expel, hasMember, listMembers).
  *  - Implements the full branch inspection/dissolution API.
@@ -13,18 +16,63 @@
  *  - Provides a default createBranch that always throws RangeError
  *    (used as-is by DomOpsPartyL18, the deepest level).
  *
- * Design notes:
- *  - The secretary is a ManagedComponent auto-created on construction that
- *    wraps the party instance itself. It is the designated owner for any
- *    ElementManager elements that belong to the party as an entity (not to
- *    any individual member). It is always enrolled and can never be expelled.
- *  - join() creates the ManagedComponent for the caller — callers never
- *    construct ManagedComponent directly.
- *  - No ElementManager calls are made here; DomOpsParty is purely
- *    organisational at this stage.
+ * Secretary / secretaryComponent
+ * ───────────────────────────────
+ * Each party node has a permanent secretary ManagedComponent. By default the
+ * secretary wraps the party node itself, but callers may supply a
+ * secretaryComponent so the secretary wraps their own object instead.
+ *
+ * This matters for destroyComponent(branch.secretary): ElementManager calls
+ * secretary.onDestroy() which delegates to secretary.component.onDestroy().
+ * Passing `this` (the owning component) as secretaryComponent means teardown
+ * flows to the correct onDestroy() implementation on the component.
+ *
+ * Usage:
+ *   const branch = domOpsParty.createBranch('ui', myComponent);
+ *   // branch.secretary.component === myComponent
+ *   elementManager.destroyComponent(branch.secretary);
+ *   // → myComponent.onDestroy() is called
+ *
+ * dissolve() — integrated teardown
+ * ─────────────────────────────────
+ * branch.dissolve() is the preferred single-call teardown for components that
+ * own a branch. It:
+ *  1. Recursively dissolves all sub-branches (depth-first).
+ *  2. Calls elementManager.removeAllElementsForComponent(member) for every
+ *     member of every dissolved node — no manual returnElement() needed.
+ *  3. Removes this branch from its parent's branch map.
+ *
+ * Components therefore only need to:
+ *   - Remove their own DOM wrapper (unmanaged div).
+ *   - Call branch.dissolve().
+ *   - Null their branch reference.
+ *
+ * Note: dissolve() uses removeAllElementsForComponent (not destroyComponent),
+ * so onDestroy() hooks on nested members are NOT re-invoked. DOM cleanup of
+ * nested cards is automatic because child wrappers live inside the parent's
+ * wrapper — removing the parent wrapper cascades to all descendants.
  */
 
-import { ManagedComponent } from '../ManagedComponent.js';
+import { ManagedComponent, _registerConstructorToken } from '../ManagedComponent.js';
+import { elementManager } from '../elementManager.js';
+
+// ── Token registration ────────────────────────────────────────────────────────
+// The symbol is never exported, so only code in this file can mint new
+// ManagedComponent instances. All external callers must go through the party.
+
+const MC_TOKEN = Symbol('DomOpsParty.MC');
+_registerConstructorToken(MC_TOKEN);
+
+/**
+ * Private factory — the sole authorised constructor for ManagedComponent.
+ * @param {*} component
+ * @returns {ManagedComponent}
+ */
+function _mc(component) {
+  return new ManagedComponent(component, MC_TOKEN);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 const VALID_NAME = /^[a-zA-Z0-9_-]+$/;
 
@@ -48,13 +96,15 @@ export class _DomOpsPartyBase {
   #branches;
 
   /**
-   * @param {string}               name   - Party/branch label. [a-zA-Z0-9_-]+
-   * @param {_DomOpsPartyBase|null} parent - Parent node; null for the root singleton.
-   * @param {number}               depth  - Distance from root (0 = root, 18 = max).
+   * @param {string}               name               - Party/branch label. [a-zA-Z0-9_-]+
+   * @param {_DomOpsPartyBase|null} parent             - Parent node; null for the root singleton.
+   * @param {number}               depth              - Distance from root (0 = root, 18 = max).
+   * @param {*}                    [secretaryComponent] - Object the secretary wraps. Defaults to
+   *                                                    the party node itself when omitted/null.
    *
    * Called only from subclass constructors — never directly by application code.
    */
-  constructor(name, parent, depth) {
+  constructor(name, parent, depth, secretaryComponent = null) {
     if (typeof name !== 'string' || name.trim() === '') {
       throw new TypeError(
         `[DomOpsParty] name must be a non-empty string. Received: ${JSON.stringify(name)}`
@@ -70,7 +120,7 @@ export class _DomOpsPartyBase {
     this.#name      = name;
     this.#depth     = depth;
     this.#parent    = parent ?? null;
-    this.#secretary = new ManagedComponent(this);
+    this.#secretary = _mc(secretaryComponent ?? this);
     this.#members   = new Set([this.#secretary]);
     this.#branches  = new Map();
   }
@@ -89,7 +139,9 @@ export class _DomOpsPartyBase {
   /**
    * The secretary — the ManagedComponent that represents this party node as
    * an entity in ElementManager. Use this as the owner when creating elements
-   * that belong to the party itself rather than to any individual member.
+   * that belong to this branch. When a secretaryComponent was supplied to
+   * createBranch, destroyComponent(secretary) will call that component's
+   * onDestroy() directly.
    *
    * @returns {ManagedComponent}
    */
@@ -108,13 +160,12 @@ export class _DomOpsPartyBase {
    * and returns the ManagedComponent for the caller to use with ElementManager.
    *
    * component may be any value — a class instance, a plain object, or null.
-   * ManagedComponent already normalises null via (component ?? null).
    *
    * @param {*} component - The object joining the party.
    * @returns {ManagedComponent}
    */
   join(component) {
-    const mc = new ManagedComponent(component);
+    const mc = _mc(component);
     this.#members.add(mc);
     return mc;
   }
@@ -170,9 +221,11 @@ export class _DomOpsPartyBase {
    * DomOpsPartyL18 does not override it — this default always throws.
    *
    * @param {string} name
+   * @param {*}      [component] - Optional object to use as the branch secretary's
+   *                               wrapped component (see class header).
    * @throws {RangeError} Always — maximum depth (18) has been reached.
    */
-  createBranch(name) {
+  createBranch(name, component = null) {
     throw new RangeError(
       `[DomOpsParty] createBranch: Maximum branch depth (18) reached. ` +
       `Cannot create branch "${name}".`
@@ -198,12 +251,9 @@ export class _DomOpsPartyBase {
   }
 
   /**
-   * Recursively dissolves all sub-branches of the named branch, then removes
-   * the branch itself from this party's branch map.
-   *
-   * Purely organisational — does not call elementManager. Any ElementManager
-   * entries owned by the dissolved branch's secretary or members remain in the
-   * registry until explicitly cleaned up by the caller.
+   * Recursively dissolves all sub-branches of the named branch, cleans up
+   * every ElementManager entry owned by any member of the dissolved subtree,
+   * then removes the branch from this party's branch map.
    *
    * @param {string} name
    * @throws {ReferenceError} If no branch with that name exists.
@@ -215,11 +265,22 @@ export class _DomOpsPartyBase {
         `[DomOpsParty] dissolveBranch: No branch named "${name}" found at this level.`
       );
     }
-    // Depth-first recursive dissolution of all descendant branches.
-    for (const subName of branch.listBranches()) {
-      branch.dissolveBranch(subName);
-    }
+    branch._dissolveTree();
     this.#branches.delete(name);
+  }
+
+  /**
+   * Dissolves this branch: cleans up all ElementManager entries for every
+   * member in this subtree (depth-first), clears all sub-branches, then
+   * removes this node from its parent's branch map.
+   *
+   * This is the preferred single-call teardown for components that own a
+   * branch. After calling dissolve(), null your branch reference — the object
+   * must not be used again.
+   */
+  dissolve() {
+    this._dissolveTree();
+    this.#parent?._removeBranch(this.#name);
   }
 
   /**
@@ -239,6 +300,38 @@ export class _DomOpsPartyBase {
   }
 
   // ── Protected helpers — for subclass createBranch overrides only ──────────
+
+  /**
+   * Depth-first recursive teardown used by both dissolveBranch() and dissolve().
+   * For every node in the subtree rooted here:
+   *  - Recursively calls _dissolveTree() on each child branch.
+   *  - Calls elementManager.removeAllElementsForComponent(member) for every
+   *    member (including the secretary) so the registry stays consistent.
+   *  - Clears the branch map of this node.
+   *
+   * Does NOT remove this node from its parent — that is the caller's job.
+   * (dissolveBranch deletes from #branches; dissolve calls _removeBranch.)
+   */
+  _dissolveTree() {
+    for (const branch of this.#branches.values()) {
+      branch._dissolveTree();
+    }
+    this.#branches.clear();
+    for (const member of this.#members) {
+      elementManager.removeAllElementsForComponent(member);
+    }
+  }
+
+  /**
+   * Removes a named branch from this node's branch map without triggering
+   * any further cleanup. Called by dissolve() on the parent after _dissolveTree()
+   * has already run on the child.
+   *
+   * @param {string} name
+   */
+  _removeBranch(name) {
+    this.#branches.delete(name);
+  }
 
   /**
    * Validates a branch name and asserts it is not already in use at this level.

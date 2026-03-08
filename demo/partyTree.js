@@ -3,10 +3,60 @@
  *
  * Renders a live DomOpsParty hierarchy as a DOM tree.
  * Works with any node that shares the _DomOpsPartyBase public API —
- * no type imports needed.
+ * no party type imports needed.
+ *
+ * Each member row shows:
+ *   ★ secretary  [id.key] [id.key] …   — permanent branch representative
+ *   · ClassName  [id.key] …            — joined members, with owned registry
+ *                                         keys making every row distinguishable
  */
 
+import { elementManager } from '../src/elementManager.js';
+
 // ── Internal renderer ─────────────────────────────────────────────────────────
+
+/**
+ * Builds one <li> for a single ManagedComponent member.
+ *
+ * @param {import('../src/ManagedComponent.js').ManagedComponent} mc
+ * @param {boolean} isSecretary
+ * @returns {HTMLLIElement}
+ */
+function renderMember(mc, isSecretary) {
+  const li = document.createElement('li');
+  li.className = isSecretary
+    ? 'party-member party-member--secretary'
+    : 'party-member';
+
+  // ── Label ────────────────────────────────────────────────────────────────────
+  if (isSecretary) {
+    const star = document.createElement('span');
+    star.className = 'party-secretary-star';
+    star.textContent = '★';
+    li.append(star, '\u00a0secretary');
+  } else {
+    const dot = document.createElement('span');
+    dot.className = 'party-dot';
+    dot.textContent = '·';
+    const comp  = mc.component;
+    const label = comp?.label ?? comp?.name ?? comp?.constructor?.name ?? 'anonymous';
+    li.append(dot, '\u00a0', label);
+  }
+
+  // ── Owned element IDs ────────────────────────────────────────────────────────
+  // Querying the live registry gives each member a unique fingerprint.
+  // For LeakyComponents this is the distinguishing detail; for secretaries it
+  // maps the party node directly to its registry keys.
+  const ownedIds = elementManager.listIdsForComponent(mc);
+  for (const id of ownedIds) {
+    const chip = document.createElement('span');
+    chip.className = 'party-member-id';
+    chip.textContent = id.key;
+    li.appendChild(chip);
+  }
+
+  return li;
+}
 
 /**
  * Recursively renders a single party node and its children.
@@ -54,20 +104,7 @@ function renderNode(party) {
   membersList.className = 'party-members-list';
 
   for (const mc of party.listMembers()) {
-    const li = document.createElement('li');
-    const isSecretary = mc === party.secretary;
-    li.className = isSecretary ? 'party-member party-member--secretary' : 'party-member';
-
-    if (isSecretary) {
-      li.innerHTML = '<span class="party-secretary-star">★</span> secretary';
-    } else {
-      // Best-effort label from the wrapped component
-      const comp   = mc.component;
-      const label  = comp?.label ?? comp?.name ?? comp?.constructor?.name ?? 'anonymous';
-      li.innerHTML = `<span class="party-dot">·</span> ${label}`;
-    }
-
-    membersList.appendChild(li);
+    membersList.appendChild(renderMember(mc, mc === party.secretary));
   }
 
   wrapper.appendChild(membersList);
@@ -78,8 +115,7 @@ function renderNode(party) {
     branchesEl.className = 'party-branches';
 
     for (const branchName of party.listBranches()) {
-      const child = party.getBranch(branchName);
-      branchesEl.appendChild(renderNode(child));
+      branchesEl.appendChild(renderNode(party.getBranch(branchName)));
     }
 
     wrapper.appendChild(branchesEl);
