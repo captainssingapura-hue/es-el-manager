@@ -1,6 +1,6 @@
 /**
  * CardComponent.js
- * Good example — extends ManagedComponent, uses ElementId for multi-level ids.
+ * Good example — composes ManagedComponent, uses ElementId for multi-level ids.
  *
  * Each instance receives a unique cardId which is used as the top-level
  * segment of every ElementId it creates. Sub-cards extend the segment path:
@@ -20,7 +20,8 @@
 import { elementManager, ManagedComponent } from '../../src/elementManager.js';
 import { ElementId }                        from '../../src/ElementId.js';
 
-export class CardComponent extends ManagedComponent {
+export class CardComponent {
+  #mc           = new ManagedComponent(this);
   #cardId       = null;
   #depth        = 0;
   #segments     = null;
@@ -42,7 +43,6 @@ export class CardComponent extends ManagedComponent {
    * @param {string[]} [opts.segments] - Full segment path; defaults to [cardId].
    */
   constructor(cardId, { depth = 0, segments = null } = {}) {
-    super();
     if (typeof cardId !== 'string' || cardId.trim() === '') {
       throw new TypeError(`[CardComponent] cardId must be a non-empty string. Received: ${cardId}`);
     }
@@ -59,6 +59,7 @@ export class CardComponent extends ManagedComponent {
   }
 
   get cardId() { return this.#cardId; }
+  get mc()     { return this.#mc; }
 
   /**
    * @param {HTMLElement} zone        - Container to append into.
@@ -69,9 +70,9 @@ export class CardComponent extends ManagedComponent {
     this.#onClose   = onClose;
     this.#onRefresh = onRefresh;
 
-    const titleEl = elementManager.createElement(this, this.#idTitle, 'h2');
-    const bodyEl  = elementManager.createElement(this, this.#idBody,  'p');
-    const closeEl = elementManager.createElement(this, this.#idClose, 'button');
+    const titleEl = elementManager.createElement(this.#mc, this.#idTitle, 'h2');
+    const bodyEl  = elementManager.createElement(this.#mc, this.#idBody,  'p');
+    const closeEl = elementManager.createElement(this.#mc, this.#idClose, 'button');
 
     titleEl.textContent = `Card  ·  ${this.#cardId}`;
     bodyEl.textContent  = `Elements tracked under namespace "${this.#segments.join('.')}".`;
@@ -97,7 +98,7 @@ export class CardComponent extends ManagedComponent {
     this.#wrapper.append(tag, header, bodyEl);
 
     if (this.#idAddSub) {
-      const addSubEl = elementManager.createElement(this, this.#idAddSub, 'button');
+      const addSubEl = elementManager.createElement(this.#mc, this.#idAddSub, 'button');
       addSubEl.textContent = '+ Add Sub-card';
       addSubEl.className   = 'btn btn-create card-add-sub-btn';
       addSubEl.title       = `Add a nested sub-card (depth ${this.#depth + 1}/5)`;
@@ -133,21 +134,20 @@ export class CardComponent extends ManagedComponent {
    * then removes the wrapper.
    */
   #close() {
-    for (const child of this.#children) elementManager.destroyComponent(child);
+    for (const child of this.#children) elementManager.destroyComponent(child.mc);
     this.#children.clear();
 
-    if (this.#idAddSub) elementManager.returnElement(this, this.#idAddSub);
-    elementManager.returnElement(this, this.#idClose);
-    elementManager.returnElement(this, this.#idBody);
-    elementManager.returnElement(this, this.#idTitle);
+    if (this.#idAddSub) elementManager.returnElement(this.#mc, this.#idAddSub);
+    elementManager.returnElement(this.#mc, this.#idClose);
+    elementManager.returnElement(this.#mc, this.#idBody);
+    elementManager.returnElement(this.#mc, this.#idTitle);
     this.#wrapper?.remove();
     this.#wrapper = null;
     this.#onClose?.();
   }
 
-  /** @override */
   onDestroy() {
-    for (const child of this.#children) elementManager.destroyComponent(child);
+    for (const child of this.#children) elementManager.destroyComponent(child.mc);
     this.#children.clear();
     this.#wrapper?.remove();
     this.#wrapper = null;
