@@ -64,6 +64,30 @@
       <button class="btn btn-return" id="btn-custom-return" disabled>destroyComponent</button>
     </div>
 
+    <!-- DomOpsParty -->
+    <div>
+      <div class="section-label">DomOpsParty</div>
+      <p class="party-desc">
+        Organisational layer above ElementManager. Components
+        <em>join()</em> a party and receive a <em>ManagedComponent</em> back.
+        Each node has a permanent <em>secretary</em>.
+      </p>
+      <button class="btn btn-create" id="btn-party-join-root">join() — enrol member in root</button>
+      <div class="field">
+        <label>Branch Name <span class="field-hint">([a-zA-Z0-9_-])</span></label>
+        <input type="text" id="party-branch-name" placeholder="e.g. ui" />
+      </div>
+      <button class="btn btn-create" id="btn-party-create-branch">createBranch(name)</button>
+      <div class="field">
+        <label>Active Branch</label>
+        <select id="party-branch-select">
+          <option value="">— no branches yet —</option>
+        </select>
+      </div>
+      <button class="btn btn-create" id="btn-party-join-branch" disabled>join() — enrol in branch</button>
+      <button class="btn btn-return" id="btn-party-dissolve" disabled>dissolveBranch(selected)</button>
+    </div>
+
     <!-- LeakyComponent — Bad Example -->
     <div>
       <div class="section-label leak-label">⚠ LeakyComponent — Bad Example</div>
@@ -96,6 +120,15 @@
         <span class="panel-header-hint">ElementId segment hierarchy</span>
       </div>
       <div id="tree-container"></div>
+    </div>
+
+    <!-- Party Tree -->
+    <div class="party-tree-panel">
+      <div class="panel-header">
+        <span class="panel-header-label">Party Tree</span>
+        <span class="panel-header-hint">DomOpsParty membership hierarchy</span>
+      </div>
+      <div id="party-tree-container"></div>
     </div>
 
     <!-- DOM Render Zone -->

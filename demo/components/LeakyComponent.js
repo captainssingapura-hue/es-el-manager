@@ -2,16 +2,27 @@
  * LeakyComponent.js
  * ⚠️  BAD EXAMPLE — intentionally leaks managed elements.
  *
- * Composes ManagedComponent correctly, so the manager accepts it.
- * The leak occurs because elementManager.destroyComponent() is never
- * called before the instance goes out of scope.
+ * Joins the root DomOpsParty via join() (not createBranch) so it doesn't
+ * own a named branch — it is just an extra party member.
+ *
+ * The leak occurs because elementManager.destroyComponent() and
+ * domOpsParty.expel() are never called before the instance goes out of scope,
+ * so both the registry entry and the party membership are orphaned.
  */
 
-import { elementManager, ManagedComponent } from '../../src/elementManager.js';
-import { ElementId }                        from '../../src/ElementId.js';
+import { elementManager } from '../../src/elementManager.js';
+import { ElementId }      from '../../src/ElementId.js';
+import { domOpsParty }    from '../../src/party/DomOpsParty.js';
 
 export class LeakyComponent {
-  #mc = new ManagedComponent(this);
+  #mc;
+
+  constructor() {
+    // Joins the root party — obtains a ManagedComponent wrapping this instance.
+    // Neither expel() nor destroyComponent() is ever called, so this member
+    // and its registry entries persist even after the LeakyComponent goes out of scope.
+    this.#mc = domOpsParty.join(this);
+  }
 
   get mc() { return this.#mc; }
 
@@ -29,6 +40,6 @@ export class LeakyComponent {
     return { instance: this, id };
   }
 
-  /** onDestroy — nothing to tear down */
+  /** onDestroy — nothing to tear down (intentionally incomplete) */
   onDestroy() {}
 }
