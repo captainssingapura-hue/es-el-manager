@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ElementManager — Live Demo</title>
+  <title>DomOpsParty — Live Demo</title>
   <link rel="stylesheet" href="demo.css" />
 </head>
 <body>
@@ -12,7 +12,7 @@
 
   <!-- ── HEADER ── -->
   <header>
-    <h1><span>Element</span>Manager</h1>
+    <h1><span>Dom</span>OpsParty</h1>
     <div class="subtitle">ES6 Singleton · Live Demo</div>
     <div class="badge">Demo</div>
   </header>
@@ -20,9 +20,9 @@
   <!-- ── LEFT: CONTROLS ── -->
   <aside class="panel-controls">
 
-    <!-- Registry Status -->
+    <!-- Party Status -->
     <div>
-      <div class="section-label">Registry Status</div>
+      <div class="section-label">Party Status</div>
       <div class="registry-box">
         <div class="registry-count" id="reg-count">0</div>
         <div class="registry-count-label">elements tracked</div>
@@ -39,15 +39,15 @@
     <div>
       <div class="section-label">BannerComponent</div>
       <button class="btn btn-create" id="btn-banner-show">show() — createElement</button>
-      <button class="btn btn-return" id="btn-banner-hide" disabled>destroy() — auto-release</button>
+      <button class="btn btn-return" id="btn-banner-hide" disabled>destroy() — branch.dissolve()</button>
     </div>
 
     <!-- Custom Element -->
     <div>
       <div class="section-label">Custom Element</div>
       <div class="field">
-        <label>Element ID <span class="field-hint">(slash-separated segments)</span></label>
-        <input type="text" id="custom-id" placeholder="e.g. app/nav/item" />
+        <label>Element name <span class="field-hint">([a-zA-Z0-9_-])</span></label>
+        <input type="text" id="custom-id" placeholder="e.g. my-widget" />
       </div>
       <div class="field">
         <label>Tag Type</label>
@@ -61,17 +61,17 @@
         </select>
       </div>
       <button class="btn btn-create" id="btn-custom-create">createElement</button>
-      <button class="btn btn-return" id="btn-custom-return" disabled>destroyComponent</button>
+      <button class="btn btn-return" id="btn-custom-return" disabled>dissolve()</button>
     </div>
 
     <!-- DomOpsParty -->
     <div>
       <div class="section-label">DomOpsParty</div>
       <p class="party-desc">
-        Organisational layer above ElementManager. Components own a named
-        <em>branch</em> and use its <em>secretary</em> as their
-        <em>ManagedComponent</em>. Calling <em>dissolve()</em> cleans up the
-        branch and all registry entries in one step.
+        Manages the component hierarchy. Each branch owns its DOM elements
+        directly via <em>branch.createElement()</em>. Calling
+        <em>dissolve()</em> removes the branch, all its elements, and all
+        sub-branches in one call — no manual cleanup needed.
       </p>
       <button class="btn btn-create" id="btn-party-join-root">createBranch() — auto-named on root</button>
       <div class="field">
@@ -94,8 +94,8 @@
       <div class="section-label leak-label">⚠ LeakyComponent — Bad Example</div>
       <p class="leak-desc">
         This component creates a branch and elements but <em>never calls
-        dissolve()</em> before going out of scope. Both the branch node and
-        its registry entries are permanently orphaned.
+        dissolve()</em> before going out of scope. The branch node and its
+        elements are permanently orphaned in the party tree.
       </p>
       <button class="btn btn-leak" id="btn-leak-spawn">spawn() — leak an element</button>
       <button class="btn btn-leak-reset" id="btn-leak-reset">force-clear leaks (audit)</button>
@@ -104,10 +104,10 @@
     <!-- Error Demos -->
     <div>
       <div class="section-label">Error Scenarios</div>
-      <button class="btn btn-error" id="btn-err-dupe">Duplicate ID (RangeError)</button>
-      <button class="btn btn-error" id="btn-err-owner">Wrong Owner (Error)</button>
-      <button class="btn btn-error" id="btn-err-missing">Missing ID (ReferenceError)</button>
-      <button class="btn btn-error" id="btn-err-plain-obj">Plain Object Owner (TypeError)</button>
+      <button class="btn btn-error" id="btn-err-dupe">Duplicate element name (RangeError)</button>
+      <button class="btn btn-error" id="btn-err-owner">Invalid element name chars (RangeError)</button>
+      <button class="btn btn-error" id="btn-err-missing">Empty element name (TypeError)</button>
+      <button class="btn btn-error" id="btn-err-plain-obj">Invalid branch name (RangeError)</button>
     </div>
 
   </aside>
@@ -115,31 +115,22 @@
   <!-- ── RIGHT: TREE + CANVAS + LOG ── -->
   <div class="panel-right">
 
-    <!-- Registry Tree -->
-    <div class="tree-panel">
-      <div class="panel-header">
-        <span class="panel-header-label">Registry Tree</span>
-        <span class="panel-header-hint">ElementId segment hierarchy</span>
-      </div>
-      <div id="tree-container"></div>
-    </div>
-
     <!-- Party Tree -->
-    <div class="party-tree-panel">
+    <div class="party-tree-panel" id="party-tree-panel">
       <div class="panel-header">
         <span class="panel-header-label">Party Tree</span>
-        <span class="panel-header-hint">DomOpsParty membership hierarchy</span>
+        <span class="panel-header-hint">branch hierarchy · elements per node</span>
       </div>
-      <div id="party-tree-container"></div>
+      <!-- party-tree-container created by domOpsParty in demo.js -->
     </div>
 
     <!-- DOM Render Zone -->
-    <div class="dom-canvas">
+    <div class="dom-canvas" id="dom-canvas">
       <div class="panel-header">
         <span class="panel-header-label">DOM Render Zone</span>
-        <span class="panel-header-hint">managed elements mount here</span>
+        <span class="panel-header-hint">all elements owned by party branches</span>
       </div>
-      <div id="render-zone"></div>
+      <!-- render-zone created by domOpsParty in demo.js -->
     </div>
 
     <!-- Console Log -->
