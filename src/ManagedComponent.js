@@ -2,8 +2,7 @@
  * ManagedComponent.js
  *
  * Wrapper class. Obtained exclusively through DomOpsParty:
- *   - branch.secretary  — the branch's permanent representative
- *   - branch.join(obj)  — enrols any object and returns a ManagedComponent
+ *   - branch.secretary  — the branch's permanent representative (sole member)
  *
  * Direct construction (`new ManagedComponent(...)`) is prevented at runtime
  * by a private module-level token that only _DomOpsPartyBase can supply.
@@ -44,7 +43,7 @@ export class ManagedComponent {
     if (_token === null || token !== _token) {
       throw new TypeError(
         '[ManagedComponent] Direct construction is not allowed. ' +
-        'Obtain a ManagedComponent via branch.join() or branch.secretary.'
+        'Obtain a ManagedComponent via branch.secretary.'
       );
     }
     this.#component = component ?? null;

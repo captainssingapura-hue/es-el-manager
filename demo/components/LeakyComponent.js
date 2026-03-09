@@ -2,40 +2,38 @@
  * LeakyComponent.js
  * ⚠️  BAD EXAMPLE — intentionally leaks managed elements.
  *
- * Joins the root DomOpsParty via join() (not createBranch) so it doesn't
- * own a named branch — it is just an extra party member.
- *
- * The leak occurs because elementManager.destroyComponent() and
- * domOpsParty.expel() are never called before the instance goes out of scope,
- * so both the registry entry and the party membership are orphaned.
+ * Creates a named branch on the root DomOpsParty but never calls
+ * branch.dissolve() — so both the branch node and any registry entries
+ * it owns are permanently orphaned when the instance goes out of scope.
  */
 
 import { elementManager } from '../../src/elementManager.js';
 import { ElementId }      from '../../src/ElementId.js';
 import { domOpsParty }    from '../../src/party/DomOpsParty.js';
 
+let _seq = 0;
+
 export class LeakyComponent {
-  #mc;
+  #branch;
 
   constructor() {
-    // Joins the root party — obtains a ManagedComponent wrapping this instance.
-    // Neither expel() nor destroyComponent() is ever called, so this member
-    // and its registry entries persist even after the LeakyComponent goes out of scope.
-    this.#mc = domOpsParty.join(this);
+    // Creates a branch — but dissolve() is never called, so the branch and
+    // its registry entries persist even after this instance goes out of scope.
+    this.#branch = domOpsParty.createBranch(`leak-${++_seq}`, this);
   }
 
-  get mc() { return this.#mc; }
+  get mc() { return this.#branch.secretary; }
 
   /**
    * Creates a managed element and abandons the instance without
-   * calling elementManager.destroyComponent(). Registry entry orphaned.
+   * calling branch.dissolve(). Registry entry and branch node orphaned.
    *
    * @param {number} index
    * @returns {{ instance: LeakyComponent, id: ElementId }}
    */
   spawn(index) {
     const id = new ElementId(['leak', `item-${index}`, `t${Date.now()}`]);
-    const el = elementManager.createElement(this.#mc, id, 'div');
+    const el = elementManager.createElement(this.#branch.secretary, id, 'div');
     el.textContent = `Leaked element #${index}  ·  id: "${id}"`;
     return { instance: this, id };
   }

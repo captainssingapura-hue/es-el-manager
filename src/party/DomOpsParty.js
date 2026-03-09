@@ -8,7 +8,6 @@
  * ─────────
  *   domOpsParty                            ← global singleton (depth 0)
  *     .secretary                           ← ManagedComponent wrapping the root party itself
- *     .join(component)                     ← enrol any object; returns a ManagedComponent
  *     .createBranch(name, component?)  → DomOpsPartyL1    (depth 1)
  *        .createBranch(name, component?) → DomOpsPartyL2  (depth 2)
  *           …

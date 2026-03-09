@@ -8,9 +8,8 @@
  *  - Registers the ManagedComponent constructor token at module load time so
  *    that _mc() is the only way to create ManagedComponent instances anywhere
  *    in the application.
- *  - Holds all private state: name, depth, parent, secretary, members, branches.
- *  - Implements the full membership API (join, expel, hasMember, listMembers).
- *  - Implements the full branch inspection/dissolution API.
+ *  - Holds all private state: name, depth, parent, secretary, branches.
+ *  - Implements the branch inspection/dissolution API.
  *  - Exposes _validateBranchName and _addBranch as protected helpers so that
  *    each level's createBranch override can validate then store in one line.
  *  - Provides a default createBranch that always throws RangeError
@@ -18,9 +17,10 @@
  *
  * Secretary / secretaryComponent
  * ───────────────────────────────
- * Each party node has a permanent secretary ManagedComponent. By default the
- * secretary wraps the party node itself, but callers may supply a
- * secretaryComponent so the secretary wraps their own object instead.
+ * Each party node has a permanent secretary ManagedComponent — the sole member
+ * of the node. By default the secretary wraps the party node itself, but
+ * callers may supply a secretaryComponent so the secretary wraps their own
+ * object instead.
  *
  * This matters for destroyComponent(branch.secretary): ElementManager calls
  * secretary.onDestroy() which delegates to secretary.component.onDestroy().
@@ -86,11 +86,8 @@ export class _DomOpsPartyBase {
   /** @type {_DomOpsPartyBase|null} */
   #parent;
 
-  /** @type {ManagedComponent} — permanent representative of this party node */
+  /** @type {ManagedComponent} — sole permanent member of this party node */
   #secretary;
-
-  /** @type {Set<ManagedComponent>} — secretary is always the first element */
-  #members;
 
   /** @type {Map<string, _DomOpsPartyBase>} */
   #branches;
@@ -121,7 +118,6 @@ export class _DomOpsPartyBase {
     this.#depth     = depth;
     this.#parent    = parent ?? null;
     this.#secretary = _mc(secretaryComponent ?? this);
-    this.#members   = new Set([this.#secretary]);
     this.#branches  = new Map();
   }
 
@@ -147,8 +143,8 @@ export class _DomOpsPartyBase {
    */
   get secretary() { return this.#secretary; }
 
-  /** Total number of enrolled members (including the secretary). @returns {number} */
-  get memberCount() { return this.#members.size; }
+  /** Always 1 — the secretary is the sole member. @returns {number} */
+  get memberCount() { return 1; }
 
   /** Number of direct child branches. @returns {number} */
   get branchCount() { return this.#branches.size; }
@@ -156,61 +152,23 @@ export class _DomOpsPartyBase {
   // ── Membership ────────────────────────────────────────────────────────────
 
   /**
-   * Joins the party: wraps component in a new ManagedComponent, enrolls it,
-   * and returns the ManagedComponent for the caller to use with ElementManager.
-   *
-   * component may be any value — a class instance, a plain object, or null.
-   *
-   * @param {*} component - The object joining the party.
-   * @returns {ManagedComponent}
-   */
-  join(component) {
-    const mc = _mc(component);
-    this.#members.add(mc);
-    return mc;
-  }
-
-  /**
-   * Removes a previously joined member from this party.
-   * The secretary can never be expelled.
-   *
-   * @param {ManagedComponent} mc
-   * @throws {TypeError}      If mc is not a ManagedComponent instance.
-   * @throws {Error}          If mc is this party's secretary.
-   * @throws {ReferenceError} If mc is not currently a member of this party.
-   */
-  expel(mc) {
-    this.#assertManagedComponent(mc, 'expel');
-    if (mc === this.#secretary) {
-      throw new Error(
-        `[DomOpsParty] expel: The secretary cannot be expelled from the party.`
-      );
-    }
-    if (!this.#members.has(mc)) {
-      throw new ReferenceError(
-        `[DomOpsParty] expel: The given ManagedComponent is not a member of this party.`
-      );
-    }
-    this.#members.delete(mc);
-  }
-
-  /**
-   * Returns true if the given ManagedComponent is currently enrolled.
+   * Returns true if the given ManagedComponent is the secretary of this node.
+   * Each node has exactly one member: its secretary.
    *
    * @param {ManagedComponent} mc
    * @returns {boolean}
    */
   hasMember(mc) {
-    return this.#members.has(mc);
+    return mc === this.#secretary;
   }
 
   /**
-   * Snapshot of all enrolled members (secretary included).
+   * Returns the secretary as the sole member of this node.
    *
    * @returns {ManagedComponent[]}
    */
   listMembers() {
-    return [...this.#members];
+    return [this.#secretary];
   }
 
   // ── Branches ──────────────────────────────────────────────────────────────
@@ -296,7 +254,7 @@ export class _DomOpsPartyBase {
 
   toString() {
     return `DomOpsParty("${this.#name}", depth=${this.#depth}, ` +
-           `members=${this.#members.size}, branches=${this.#branches.size})`;
+           `branches=${this.#branches.size})`;
   }
 
   // ── Protected helpers — for subclass createBranch overrides only ──────────
@@ -305,8 +263,8 @@ export class _DomOpsPartyBase {
    * Depth-first recursive teardown used by both dissolveBranch() and dissolve().
    * For every node in the subtree rooted here:
    *  - Recursively calls _dissolveTree() on each child branch.
-   *  - Calls elementManager.removeAllElementsForComponent(member) for every
-   *    member (including the secretary) so the registry stays consistent.
+   *  - Calls elementManager.removeAllElementsForComponent(secretary) to clean
+   *    the registry for this node's secretary.
    *  - Clears the branch map of this node.
    *
    * Does NOT remove this node from its parent — that is the caller's job.
@@ -317,9 +275,7 @@ export class _DomOpsPartyBase {
       branch._dissolveTree();
     }
     this.#branches.clear();
-    for (const member of this.#members) {
-      elementManager.removeAllElementsForComponent(member);
-    }
+    elementManager.removeAllElementsForComponent(this.#secretary);
   }
 
   /**
@@ -375,19 +331,4 @@ export class _DomOpsPartyBase {
     return branch;
   }
 
-  // ── Private guard ─────────────────────────────────────────────────────────
-
-  /**
-   * @param {*}      value
-   * @param {string} method
-   * @throws {TypeError}
-   */
-  #assertManagedComponent(value, method) {
-    if (!(value instanceof ManagedComponent)) {
-      throw new TypeError(
-        `[DomOpsParty] ${method}: expected a ManagedComponent instance. ` +
-        `Received: ${value?.constructor?.name ?? typeof value}.`
-      );
-    }
-  }
 }

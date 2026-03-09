@@ -68,11 +68,12 @@
     <div>
       <div class="section-label">DomOpsParty</div>
       <p class="party-desc">
-        Organisational layer above ElementManager. Components
-        <em>join()</em> a party and receive a <em>ManagedComponent</em> back.
-        Each node has a permanent <em>secretary</em>.
+        Organisational layer above ElementManager. Components own a named
+        <em>branch</em> and use its <em>secretary</em> as their
+        <em>ManagedComponent</em>. Calling <em>dissolve()</em> cleans up the
+        branch and all registry entries in one step.
       </p>
-      <button class="btn btn-create" id="btn-party-join-root">join() — enrol member in root</button>
+      <button class="btn btn-create" id="btn-party-join-root">createBranch() — auto-named on root</button>
       <div class="field">
         <label>Branch Name <span class="field-hint">([a-zA-Z0-9_-])</span></label>
         <input type="text" id="party-branch-name" placeholder="e.g. ui" />
@@ -84,7 +85,7 @@
           <option value="">— no branches yet —</option>
         </select>
       </div>
-      <button class="btn btn-create" id="btn-party-join-branch" disabled>join() — enrol in branch</button>
+      <button class="btn btn-create" id="btn-party-join-branch" disabled>createBranch() — sub-branch on selected</button>
       <button class="btn btn-return" id="btn-party-dissolve" disabled>dissolveBranch(selected)</button>
     </div>
 
@@ -92,8 +93,9 @@
     <div>
       <div class="section-label leak-label">⚠ LeakyComponent — Bad Example</div>
       <p class="leak-desc">
-        This component creates elements but <em>never calls destroyComponent()</em>
-        before going out of scope. Watch the tree grow and never shrink.
+        This component creates a branch and elements but <em>never calls
+        dissolve()</em> before going out of scope. Both the branch node and
+        its registry entries are permanently orphaned.
       </p>
       <button class="btn btn-leak" id="btn-leak-spawn">spawn() — leak an element</button>
       <button class="btn btn-leak-reset" id="btn-leak-reset">force-clear leaks (audit)</button>

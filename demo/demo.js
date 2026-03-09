@@ -29,6 +29,7 @@ let banner   = new BannerComponent();
 
 // ── Local state ───────────────────────────────────────────────────────────────
 let bannerVisible = false;
+let customBranch  = null;
 let customComp    = null;
 let customId      = null;  // ElementId
 let customWrapper = null;
@@ -144,7 +145,8 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
   try {
     customId = new ElementId(segments);
 
-    customComp = domOpsParty.join({ onDestroy() { customWrapper?.remove(); } });
+    customBranch = domOpsParty.createBranch('custom', { onDestroy() { customWrapper?.remove(); } });
+    customComp   = customBranch.secretary;
 
     const el = elementManager.createElement(customComp, customId, tagVal);
 
@@ -171,10 +173,10 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
   if (!customComp || !customId) return;
   try {
     elementManager.destroyComponent(customComp);
-    if (domOpsParty.hasMember(customComp)) domOpsParty.expel(customComp);
+    customBranch.dissolve();
     log(`elementManager.destroyComponent(customComp) → onDestroy() + removeAllElementsForComponent() ✓`, 'warn');
     log(`registry.size = ${elementManager.size}`, 'info');
-    customComp = customId = customWrapper = null;
+    customBranch = customComp = customId = customWrapper = null;
     document.getElementById('btn-custom-create').disabled = false;
     document.getElementById('btn-custom-return').disabled = true;
     document.getElementById('custom-id').value = '';
@@ -190,27 +192,45 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
 document.getElementById('btn-err-dupe').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount CardComponent or BannerComponent first.', 'warn'); return; }
+  partyMemberSeq++;
+  const errBranch = domOpsParty.createBranch(`err-${partyMemberSeq}`);
   try {
-    const fakeComp = domOpsParty.join(null);
-    elementManager.createElement(fakeComp, ids[0], 'span');
-  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
+    elementManager.createElement(errBranch.secretary, ids[0], 'span');
+  } catch (e) {
+    log(`[${e.constructor.name}] ${e.message}`, 'error');
+  } finally {
+    errBranch.dissolve();
+    refreshParty();
+  }
 });
 
 document.getElementById('btn-err-owner').addEventListener('click', () => {
   const ids = elementManager.listIds();
   if (ids.length === 0) { log('Mount an element first.', 'warn'); return; }
+  partyMemberSeq++;
+  const errBranch = domOpsParty.createBranch(`err-${partyMemberSeq}`);
   try {
-    const impostor = domOpsParty.join(null);
-    elementManager.returnElement(impostor, ids[0]);
-  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
+    elementManager.returnElement(errBranch.secretary, ids[0]);
+  } catch (e) {
+    log(`[${e.constructor.name}] ${e.message}`, 'error');
+  } finally {
+    errBranch.dissolve();
+    refreshParty();
+  }
 });
 
 document.getElementById('btn-err-missing').addEventListener('click', () => {
+  partyMemberSeq++;
+  const errBranch = domOpsParty.createBranch(`err-${partyMemberSeq}`);
   try {
-    const ghost   = domOpsParty.join(null);
     const ghostId = new ElementId(['ghost', 'element', 'xyz']);
-    elementManager.returnElement(ghost, ghostId);
-  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
+    elementManager.returnElement(errBranch.secretary, ghostId);
+  } catch (e) {
+    log(`[${e.constructor.name}] ${e.message}`, 'error');
+  } finally {
+    errBranch.dissolve();
+    refreshParty();
+  }
 });
 
 document.getElementById('btn-err-plain-obj').addEventListener('click', () => {
@@ -242,9 +262,9 @@ function refreshParty() {
 
 document.getElementById('btn-party-join-root').addEventListener('click', () => {
   partyMemberSeq++;
-  const label = `member-${partyMemberSeq}`;
-  domOpsParty.join({ label });
-  log(`domOpsParty.join({ label: "${label}" }) → ManagedComponent  |  root members: ${domOpsParty.memberCount}`, 'ok');
+  const name = `branch-${partyMemberSeq}`;
+  domOpsParty.createBranch(name);
+  log(`domOpsParty.createBranch("${name}") → DomOpsPartyL1  |  root branches: ${domOpsParty.branchCount}`, 'ok');
   refreshParty();
 });
 
@@ -265,10 +285,12 @@ document.getElementById('btn-party-join-branch').addEventListener('click', () =>
   const branch = domOpsParty.getBranch(name);
   if (!branch) { log(`Branch "${name}" not found.`, 'error'); return; }
   partyMemberSeq++;
-  const label = `member-${partyMemberSeq}`;
-  branch.join({ label });
-  log(`branch("${name}").join({ label: "${label}" }) → ManagedComponent  |  branch members: ${branch.memberCount}`, 'ok');
-  refreshParty();
+  const childName = `branch-${partyMemberSeq}`;
+  try {
+    branch.createBranch(childName);
+    log(`branch("${name}").createBranch("${childName}") → DomOpsPartyL2  |  sub-branches: ${branch.branchCount}`, 'ok');
+    refreshParty();
+  } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
 });
 
 document.getElementById('btn-party-dissolve').addEventListener('click', () => {
@@ -319,11 +341,14 @@ document.getElementById('btn-leak-reset').addEventListener('click', () => {
   if (leakedIds.length === 0) { log('No leaks to clear.', 'info'); return; }
 
   for (const id of leakedIds) {
-    const impostor = domOpsParty.join(null);
+    partyMemberSeq++;
+    const auditBranch = domOpsParty.createBranch(`audit-${partyMemberSeq}`);
     try {
-      elementManager.returnElement(impostor, id);
+      elementManager.returnElement(auditBranch.secretary, id);
     } catch (e) {
       log(`[Audit] "${id.key}" — original instance lost, cannot return. (${e.constructor.name})`, 'error');
+    } finally {
+      auditBranch.dissolve();
     }
   }
 
