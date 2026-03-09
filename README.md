@@ -1,155 +1,170 @@
-# ElementManager
+# DomOpsParty
 
-A singleton DOM element manager for ES6 module-based applications.  
-All DOM element creation flows through a single registry, every element has a typed owner, and cleanup is automatic and leak-proof.
+A singleton DOM element manager for ES6 module-based applications.
+All DOM element creation flows through a branch hierarchy. Every element has a named owner, and cleanup is a single call — no manual element removal needed.
 
 ---
 
 ## Why
 
-Calling `document.createElement` directly scatters element lifecycle across the codebase. There is no central record of what exists, who owns it, or whether it was ever cleaned up. `ElementManager` fixes this by making creation and destruction explicit, auditable, and enforced at runtime.
+Calling `document.createElement` directly scatters element lifecycle across the codebase. There is no central record of what exists, who owns it, or whether it was ever cleaned up. `DomOpsParty` fixes this by making creation and destruction explicit, auditable, and enforced at the branch level.
 
 ---
 
 ## Core Concepts
 
-### `ElementId` — hierarchical element identity
+### Branch — the element owner
 
-Elements are identified by an ordered list of string segments rather than a flat string.
+A branch is a named node in the party tree. It is the only entity that can create DOM elements. Components receive a branch at construction time and use it exclusively for all DOM work.
 
 ```js
-new ElementId(['app', 'sidebar', 'toggle'])
-// key: "app.sidebar.toggle"
+const branch = domOpsParty.createBranch('my-widget');
+const el     = branch.createElement('root', 'div');
 ```
 
-This makes component namespacing natural and unambiguous. A card with id `a1b2c3` owns `a1b2c3.title`, `a1b2c3.body`, `a1b2c3.close` — none of which can collide with a second card `f4e5d6` owning its own subtree.
-
-**`ElementId` API**
-
-| Member | Description |
-|---|---|
-| `new ElementId(segments)` | Create from a `string[]`. Segments must match `[a-zA-Z0-9_-]`. |
-| `.key` | Dot-joined canonical string — `"card.title"` |
-| `.segments` | Read-only copy of the segment array |
-| `.depth` | Number of segments |
-| `.child(segment)` | Returns a new `ElementId` with one segment appended |
-| `.hasPrefix(other)` | `true` if this id starts with all segments of `other` |
-| `.equals(other)` | Value equality by key |
-| `.toString()` | `"ElementId(card.title)"` |
+Names for both branches and elements must match `[a-zA-Z0-9_-]+`.
 
 ---
 
-### `ManagedComponent` — marker base class
+### `branch.createElement(name, tagName)` — the only sanctioned DOM API
 
-Any class that wants to create elements must extend `ManagedComponent`. It is a pure value object — no state, no imports, no logic. Its only jobs are:
+No component may call `document.createElement()` directly. All elements must be created through a branch.
 
-1. **Type gate** — `ElementManager` rejects any owner that is not an `instanceof ManagedComponent`. Plain objects cannot own elements.
-2. **Override hook** — subclasses implement `onDestroy()` for DOM teardown. `ElementManager` calls it during `destroyComponent()`.
+- `name` — unique within the branch, `[a-zA-Z0-9_-]+`
+- `tagName` — any valid HTML tag
+
+Returns the `HTMLElement`. Throws `TypeError` on empty/invalid name, `RangeError` on duplicate name within the same branch.
+
+---
+
+### `branch.dissolve()` — single-call teardown
+
+`dissolve()` is the complete teardown primitive. One call:
+
+1. Depth-first dissolves all sub-branches.
+2. Calls `.remove()` on every owned DOM element at every node.
+3. Clears all element and branch maps.
+4. Removes the branch from its parent.
+
+After `dissolve()`, null the branch reference — the object must not be used again.
 
 ```js
-import { ManagedComponent } from './ManagedComponent.js';
-
-class MyWidget extends ManagedComponent {
-  #wrapper = null;
-
-  mount(zone) {
-    const el = elementManager.createElement(this, new ElementId(['widget', 'root']), 'div');
-    this.#wrapper = zone.appendChild(el);
-  }
-
-  onDestroy() {
-    this.#wrapper?.remove();
-    this.#wrapper = null;
-  }
-}
+branch.dissolve();
+branch = null;
 ```
 
 ---
 
-### `elementManager` — the singleton registry
+### `domOpsParty` — the root singleton
 
-The single source of truth for all managed elements. Imported as a constant — only one instance ever exists.
+The root party is the "big boss". It owns the top-level layout zones and is the entry point for creating the first-level branches.
 
 ```js
-import { elementManager } from './elementManager.js';
+import { domOpsParty } from './src/party/DomOpsParty.js';
+
+// Root party creates managed layout zones — no raw document.createElement
+const renderZone = domOpsParty.createElement('render-zone', 'div');
+document.getElementById('app').appendChild(renderZone);
 ```
-
-**Creation & release**
-
-| Method | Description |
-|---|---|
-| `createElement(owner, elementId, elementType)` | Creates a `<elementType>` element, registers it, sets `element.id` to `elementId.key`, and returns it. Throws if `owner` is not a `ManagedComponent` or if `elementId` is already in use. |
-| `returnElement(owner, elementId)` | Releases a single element. Detaches it from the DOM and removes it from the registry. Only the original owner may return an element. |
-| `removeAllElementsForComponent(owner)` | Releases every element owned by the given component in one call. |
-| `destroyComponent(component)` | Calls `component.onDestroy()` then `removeAllElementsForComponent()`. The recommended teardown entry point. |
-
-**Inspection**
-
-| Method / Property | Description |
-|---|---|
-| `elementManager.size` | Number of elements currently tracked |
-| `has(elementId)` | `true` if the id is registered |
-| `getElement(elementId)` | Returns the `HTMLElement` without releasing it |
-| `getOwner(elementId)` | Returns the `ManagedComponent` instance that owns the element |
-| `listIds()` | All registered `ElementId` instances |
-| `listIdsForComponent(owner)` | All `ElementId` instances owned by a specific component |
-| `listIdsByPrefix(prefix)` | All `ElementId` instances whose key starts with the given prefix |
 
 ---
 
 ## File Structure
 
 ```
-el_man/
-├── ElementId.js          Immutable multi-level element identifier
-├── ManagedComponent.js   Marker base class — pure value object
-├── elementManager.js     Singleton registry — all lifecycle logic lives here
+es-el-manager/
+├── src/
+│   └── party/
+│       ├── _DomOpsPartyBase.js   Internal base class — all branch logic lives here
+│       └── DomOpsParty.js        Root singleton + 18 typed level classes
 │
-├── CardComponent.js      Example: multi-element component with close button
-├── BannerComponent.js    Example: single-element component
-├── LeakyComponent.js     ⚠ Bad example: never calls destroyComponent()
-│
-├── demo.html             Live interactive demo
-├── demo.js               Demo wiring — ES6 module
-├── demo.css              Demo styles
-└── registryTree.js       Registry tree view renderer
+└── demo/
+    ├── components/
+    │   ├── CardComponent.js      Multi-instance component; close = branch.dissolve()
+    │   ├── BannerComponent.js    Single-instance component; destroy = branch.dissolve()
+    │   └── LeakyComponent.js     ⚠ Bad example: dissolve() never called
+    ├── partyTree.js              Live party hierarchy renderer
+    ├── demo.html                 Interactive demo
+    ├── demo.js                   Demo wiring — ES6 module
+    └── demo.css                  Demo styles
 ```
+
+---
+
+## API Reference
+
+### Element operations
+
+| Method / Property | Description |
+|---|---|
+| `branch.createElement(name, tagName)` | Creates a `<tagName>` element, registers it under `name`, returns it. Throws on invalid or duplicate name. |
+| `branch.getElement(name)` | Returns a previously created element by name, or `null`. |
+| `branch.listElements()` | Returns `{ name, tagName }[]` for all elements on this branch (not sub-branches). |
+| `branch.elementCount` | Number of elements directly owned by this branch. |
+
+### Branch operations
+
+| Method / Property | Description |
+|---|---|
+| `branch.createBranch(name)` | Creates and returns a named child branch at `depth + 1`. Max depth 18. |
+| `branch.getBranch(name)` | Returns a child branch by name, or `null`. |
+| `branch.hasBranch(name)` | `true` if a child branch with that name exists. |
+| `branch.listBranches()` | Names of all direct child branches. |
+| `branch.branchCount` | Number of direct child branches. |
+| `branch.dissolveBranch(name)` | Dissolves a named child branch and its entire subtree. |
+| `branch.dissolve()` | Dissolves this branch and removes it from its parent. |
+
+### Inspection
+
+| Property | Description |
+|---|---|
+| `branch.name` | Human-readable label. |
+| `branch.depth` | Distance from root (0 = root, 18 = deepest). |
+| `branch.parent` | Parent branch node, or `null` for the root. |
+| `branch.toString()` | `DomOpsParty("name", depth=N, elements=N, branches=N)` |
 
 ---
 
 ## Usage Pattern
 
 ```js
-import { elementManager }  from './elementManager.js';
-import { ManagedComponent } from './ManagedComponent.js';
-import { ElementId }        from './ElementId.js';
+import { domOpsParty } from './src/party/DomOpsParty.js';
 
-class ProfileCard extends ManagedComponent {
-  #wrapper = null;
+class ProfileCard {
+  #branch = null;
+  #onClose;
 
-  mount(zone, cardId) {
-    // All IDs share the same prefix — scoped to this instance
-    const avatar = elementManager.createElement(this, new ElementId([cardId, 'avatar']), 'img');
-    const name   = elementManager.createElement(this, new ElementId([cardId, 'name']),   'h2');
-    const bio    = elementManager.createElement(this, new ElementId([cardId, 'bio']),    'p');
-
-    this.#wrapper = document.createElement('div');
-    this.#wrapper.append(avatar, name, bio);
-    zone.appendChild(this.#wrapper);
+  constructor(cardId, onClose) {
+    this.#onClose = onClose;
+    this.#branch  = domOpsParty.createBranch(cardId);
   }
 
-  onDestroy() {
-    this.#wrapper?.remove();
-    this.#wrapper = null;
+  mount(zone) {
+    const wrapper = this.#branch.createElement('wrapper', 'div');
+    const title   = this.#branch.createElement('title',   'h2');
+    const body    = this.#branch.createElement('body',    'p');
+    const close   = this.#branch.createElement('close',   'button');
+
+    close.textContent = '×';
+    close.addEventListener('click', () => this.#close());
+
+    wrapper.append(title, body, close);
+    zone.appendChild(wrapper);
+  }
+
+  #close() {
+    this.#branch?.dissolve();
+    this.#branch = null;
+    this.#onClose?.();
   }
 }
 
 // Mount
-const card = new ProfileCard();
-card.mount(document.getElementById('app'), 'profile-1');
+const card = new ProfileCard('profile-1', () => console.log('closed'));
+card.mount(document.getElementById('app'));
 
-// Later — single call cleans up every element
-elementManager.destroyComponent(card);
+// Later — one call cleans up every element and the branch
+// (or click the close button — same path)
 ```
 
 ---
@@ -157,22 +172,20 @@ elementManager.destroyComponent(card);
 ## Lifecycle
 
 ```
-createElement()
+createBranch('widget')
       │
-      ▼
-  registry
-  ┌─────────────────────────────────────────┐
-  │  "a1b2c3.title" → { element, owner }   │
-  │  "a1b2c3.body"  → { element, owner }   │
-  │  "a1b2c3.close" → { element, owner }   │
-  └─────────────────────────────────────────┘
-      │
-      ├── returnElement()                    manual, per-element
-      ├── removeAllElementsForComponent()    bulk release
-      └── destroyComponent()                 onDestroy() → bulk release
+      ├── branch.createElement('wrapper', 'div')
+      ├── branch.createElement('title',   'h2')
+      └── branch.createElement('close',   'button')
+            │
+            ▼
+      branch.dissolve()
+            │
+            ├── _releaseAll()  → wrapper.remove(), title.remove(), close.remove()
+            └── removed from parent branch map
 ```
 
-Elements can be returned manually one at a time (as the close button in `CardComponent` demonstrates), or all at once via `destroyComponent()`. The two paths are interchangeable — `destroyComponent()` applies the bulk version as a safety net after calling `onDestroy()`.
+Components can also nest sub-branches for sub-components. `dissolve()` on any ancestor node tears down the entire subtree in one call — depth-first, no manual cleanup needed.
 
 ---
 
@@ -180,18 +193,18 @@ Elements can be returned manually one at a time (as the close button in `CardCom
 
 The design makes leaks structurally difficult:
 
-- **Type enforcement** — only `ManagedComponent` subclasses can own elements. Plain objects are rejected at the gate.
-- **Ownership checks** — only the original owner can return an element. Impostors throw immediately.
-- **`destroyComponent()` safety net** — calls `removeAllElementsForComponent()` after `onDestroy()`, so any element the subclass forgot to return is still cleaned up.
-- **Registry tree** — the live tree view in the demo makes orphaned entries visible the moment they occur.
+- **No raw `document.createElement`** — the only way to create a DOM element is through `branch.createElement()`, which registers it immediately.
+- **Explicit dissolve contract** — before a branch goes out of scope, `branch.dissolve()` must be called. This is a design-time convention enforced by code review, not a runtime lock.
+- **Depth-first teardown** — `dissolve()` walks the entire subtree before releasing the parent's elements, so child wrappers are always detached before their ancestors. Calling `.remove()` on an already-detached element is a safe no-op.
+- **Party tree** — the live tree view in the demo makes orphaned branches visible the moment they occur.
 
-The only way to produce a persistent leak is to hold a `ManagedComponent` instance, register elements against it, and then discard the instance reference without calling `destroyComponent()` — exactly what `LeakyComponent` demonstrates. Without the original instance, the registry entry is unreachable and cannot be returned.
+The only way to produce a persistent leak is to hold a branch reference, create elements on it, and then discard the reference without calling `dissolve()` — exactly what `LeakyComponent` demonstrates.
 
 ---
 
 ## Demo
 
-Serve the `el_man/` directory from any static web server and open `demo.html`.
+Serve the project root from any static web server and open `demo/demo.html`.
 
 ```bash
 # Python
@@ -203,9 +216,9 @@ npx serve .
 
 The demo includes:
 
-- **CardComponent** — spawn multiple cards, each with its own UUID-prefixed namespace. Close buttons call `returnElement()` directly, and the tree updates live.
-- **BannerComponent** — single-element component with show/hide lifecycle.
-- **Custom element** — create any element with a slash-separated multi-level id (`app/nav/item`).
-- **LeakyComponent** — demonstrates what an orphaned registry entry looks like in the tree.
-- **Error scenarios** — duplicate id, wrong owner, missing id, and plain object owner — all showing the exact error thrown.
-- **Registry tree** — live hierarchical view of every registered `ElementId`, colour-coded by component type and updated on every operation.
+- **CardComponent** — spawn multiple cards, each with its own UUID-prefixed branch. Close buttons call `branch.dissolve()` directly, and the party tree updates live.
+- **BannerComponent** — single-instance component with show/hide lifecycle.
+- **Custom element** — create any element with a custom name and tag type on a dedicated branch.
+- **LeakyComponent** — demonstrates what an orphaned branch looks like in the party tree. The audit button dissolves all leaked branches.
+- **Error scenarios** — duplicate element name, invalid name characters, empty name, and invalid branch name — all showing the exact error thrown.
+- **Party tree** — live hierarchical view of every branch, element count per node, and depth badges — updated on every operation.
