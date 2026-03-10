@@ -101,6 +101,24 @@
       <button class="btn btn-leak-reset" id="btn-leak-reset">force-clear leaks (audit)</button>
     </div>
 
+    <!-- Leak Scanner -->
+    <div>
+      <div class="section-label scanner-label">Leak Scanner</div>
+      <p class="leak-scanner-desc">
+        Periodically walks the branch tree checking <em>isOwnerAlive</em> on
+        every branch. When an owner has been GC'd the branch is highlighted red
+        in the tree and auto-dissolved.
+      </p>
+      <div class="registry-box scanner-status-box">
+        <div class="registry-count" id="leak-count">0</div>
+        <div class="registry-count-label">branches auto-dissolved</div>
+      </div>
+      <button class="btn btn-scanner-clean" id="btn-scanner-clean-all">Clean all leaks — tree scan</button>
+      <button class="btn btn-create"  id="btn-scanner-start">Start auto-scan (5 s interval)</button>
+      <button class="btn btn-return"  id="btn-scanner-stop"  disabled>Stop auto-scan</button>
+      <button class="btn btn-scanner-now" id="btn-scanner-scan-now">Scan now (manual)</button>
+    </div>
+
     <!-- Error Demos -->
     <div>
       <div class="section-label">Error Scenarios</div>

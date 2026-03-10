@@ -41,6 +41,9 @@ export class _DomOpsPartyBase {
   /** @type {Map<string, _DomOpsPartyBase>} */
   #branches;
 
+  /** @type {WeakRef|null} — weak reference to the object that owns this branch */
+  #ownerRef = null;
+
   /**
    * @param {string}               name   - Branch label. [a-zA-Z0-9_-]+
    * @param {_DomOpsPartyBase|null} parent - Parent node; null for the root singleton.
@@ -67,6 +70,21 @@ export class _DomOpsPartyBase {
   }
 
   // ── Getters ───────────────────────────────────────────────────────────────
+
+  /**
+   * Whether the registered owner of this branch is still alive.
+   *
+   * Returns:
+   *   null  — no owner registered (root or unowned branch)
+   *   true  — owner object is reachable (not a leak)
+   *   false — owner has been garbage-collected → this branch is leaked
+   *
+   * @returns {boolean|null}
+   */
+  get isOwnerAlive() {
+    if (this.#ownerRef === null) return null;
+    return this.#ownerRef.deref() !== undefined;
+  }
 
   /** Human-readable label for this party node. @returns {string} */
   get name()  { return this.#name; }
@@ -297,14 +315,28 @@ export class _DomOpsPartyBase {
   }
 
   /**
+   * Registers the owner of this branch as a weak reference.
+   * When the owner is garbage-collected, isOwnerAlive returns false,
+   * signalling that this branch has been leaked.
+   *
+   * @param {object} owner - The component or object responsible for this branch.
+   */
+  _setOwner(owner) {
+    this.#ownerRef = new WeakRef(owner);
+  }
+
+  /**
    * Stores a newly created branch. Call after _validateBranchName.
+   * If owner is provided, registers it as the branch's weak owner reference.
    * Returns the branch so createBranch overrides can return it in one line.
    *
    * @param {string}           name
    * @param {_DomOpsPartyBase} branch
+   * @param {object|null}      [owner=null]
    * @returns {_DomOpsPartyBase}
    */
-  _addBranch(name, branch) {
+  _addBranch(name, branch, owner = null) {
+    if (owner !== null) branch._setOwner(owner);
     this.#branches.set(name, branch);
     return branch;
   }

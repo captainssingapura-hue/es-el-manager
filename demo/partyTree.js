@@ -39,6 +39,20 @@ function renderNode(party) {
 
   header.append(icon, nameEl, depthBadge);
 
+  // Owner status dot — only shown when an owner was registered via createBranch(name, owner)
+  const aliveStatus = party.isOwnerAlive;
+  if (aliveStatus !== null) {
+    const dot = document.createElement('span');
+    dot.className = aliveStatus
+      ? 'party-owner-dot party-owner-dot--alive'
+      : 'party-owner-dot party-owner-dot--leaked';
+    dot.title = aliveStatus ? 'owner alive' : 'owner GC\'d — leaked!';
+    header.appendChild(dot);
+    if (!aliveStatus) {
+      header.classList.add('party-node-header--leaked');
+    }
+  }
+
   if (party.elementCount > 0) {
     const elBadge = document.createElement('span');
     elBadge.className   = 'party-badge';
