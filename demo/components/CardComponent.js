@@ -46,7 +46,7 @@ export class CardComponent {
     }
     this.#cardId = cardId;
     this.#depth  = depth;
-    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId);
+    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId, this);
   }
 
   get cardId() { return this.#cardId; }

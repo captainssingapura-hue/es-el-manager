@@ -7,11 +7,12 @@
  * No raw document.createElement() is used outside of demo infrastructure (log).
  */
 
-import { CardComponent }    from './components/CardComponent.js';
-import { BannerComponent }  from './components/BannerComponent.js';
-import { LeakyComponent }   from './components/LeakyComponent.js';
-import { refreshPartyTree } from './partyTree.js';
-import { domOpsParty }      from '../src/party/DomOpsParty.js';
+import { CardComponent }              from './components/CardComponent.js';
+import { BannerComponent }            from './components/BannerComponent.js';
+import { LeakyComponent }             from './components/LeakyComponent.js';
+import { refreshPartyTree }           from './partyTree.js';
+import { startLeakScanner, scanOnce } from './leakScanner.js';
+import { domOpsParty }                from '../src/party/DomOpsParty.js';
 
 // ── Debug exposure ────────────────────────────────────────────────────────────
 window.__demo = { party: domOpsParty };
@@ -279,7 +280,33 @@ document.getElementById('btn-leak-spawn').addEventListener('click', () => {
   const leaky = new LeakyComponent();
   const { branchName, element } = leaky.spawn(leakCount);
   leakedBranchNames.push(branchName);
-  renderZone.appendChild(element);
+
+  // Wrap the managed element in an unmanaged container so we can attach a
+  // per-item cleanup button without touching the branch-managed element itself.
+  const wrapper   = document.createElement('div');
+  wrapper.className = 'leaked-el-wrapper';
+
+  const removeBtn = document.createElement('button');
+  removeBtn.className   = 'leaked-el-remove-btn';
+  removeBtn.textContent = '✕ clean up';
+  removeBtn.title       = `Force-dissolve branch "${branchName}"`;
+
+  removeBtn.addEventListener('click', () => {
+    const idx = leakedBranchNames.indexOf(branchName);
+    if (idx !== -1) leakedBranchNames.splice(idx, 1);
+    try {
+      domOpsParty.dissolveBranch(branchName);
+      log(`[Manual cleanup] dissolveBranch("${branchName}") ✓ — elements released`, 'warn');
+    } catch (e) {
+      log(`[Manual cleanup] "${branchName}" — ${e.message}`, 'error');
+    }
+    wrapper.remove();   // remove the unmanaged wrapper (managed element already gone)
+    refresh();
+  });
+
+  wrapper.appendChild(element);
+  wrapper.appendChild(removeBtn);
+  renderZone.appendChild(wrapper);
   // leaky goes out of scope — dissolve() never called
 
   log(`new LeakyComponent().spawn(${leakCount}) — branch "${branchName}" orphaned, dissolve() never called`, 'error');
@@ -297,10 +324,105 @@ document.getElementById('btn-leak-reset').addEventListener('click', () => {
       log(`[Audit] "${branchName}" — ${e.message}`, 'error');
     }
   }
+  // Also remove any leftover unmanaged wrapper divs (the per-item cleanup buttons).
+  renderZone.querySelectorAll('.leaked-el-wrapper').forEach(w => w.remove());
   leakedBranchNames.length = 0;
   leakCount = 0;
   log('Audit complete — all orphaned branches dissolved.', 'warn');
   refresh();
+});
+
+// ════════════════════════════════════════════════════════════════════════════════
+//  Leak Scanner controls
+// ════════════════════════════════════════════════════════════════════════════════
+let _scanner         = null;
+let _leaksDissolved  = 0;
+
+function recordLeaks(leaks) {
+  _leaksDissolved += leaks.length;
+  const el = document.getElementById('leak-count');
+  el.textContent = _leaksDissolved;
+  el.classList.toggle('has-leaks', _leaksDissolved > 0);
+  for (const b of leaks) {
+    log(`[LeakScanner] branch "${b.name}" — owner GC'd, dissolved`, 'error');
+  }
+}
+
+/**
+ * Scans the full party tree for leaked branches (isOwnerAlive === false),
+ * dissolves them all recursively, sweeps unmanaged wrapper divs left behind
+ * by the LeakyComponent demo UI, and syncs the leakedBranchNames tracking.
+ * Returns the number of branches dissolved.
+ */
+function cleanAllLeaks() {
+  const leaks = scanOnce(domOpsParty);
+  if (leaks.length === 0) return 0;
+
+  recordLeaks(leaks);
+
+  for (const b of leaks) {
+    // Keep manual tracking in sync so force-clear doesn't attempt to
+    // re-dissolve branches that we already cleaned here.
+    const idx = leakedBranchNames.indexOf(b.name);
+    if (idx !== -1) leakedBranchNames.splice(idx, 1);
+    b.dissolve();   // depth-first: dissolves entire subtree
+  }
+
+  // Sweep unmanaged wrapper divs left behind by the per-item UI.
+  renderZone.querySelectorAll('.leaked-el-wrapper').forEach(w => w.remove());
+
+  return leaks.length;
+}
+
+document.getElementById('btn-scanner-start').addEventListener('click', () => {
+  if (_scanner) return;
+  _scanner = startLeakScanner(domOpsParty, {
+    intervalMs:   5000,
+    autoDissolve: true,
+    // onLeaksFound fires before auto-dissolve runs inside leakScanner.js.
+    // Defer the full post-dissolve cleanup so it runs after that loop completes.
+    onLeaksFound: (leaks) => {
+      recordLeaks(leaks);
+      setTimeout(() => {
+        for (const b of leaks) {
+          const idx = leakedBranchNames.indexOf(b.name);
+          if (idx !== -1) leakedBranchNames.splice(idx, 1);
+        }
+        renderZone.querySelectorAll('.leaked-el-wrapper').forEach(w => w.remove());
+        refresh();
+      }, 0);
+    },
+  });
+  log('[LeakScanner] Auto-scan started — interval: 5 s', 'info');
+  document.getElementById('btn-scanner-start').disabled = true;
+  document.getElementById('btn-scanner-stop').disabled  = false;
+});
+
+document.getElementById('btn-scanner-stop').addEventListener('click', () => {
+  _scanner?.stop();
+  _scanner = null;
+  log('[LeakScanner] Auto-scan stopped', 'info');
+  document.getElementById('btn-scanner-start').disabled = false;
+  document.getElementById('btn-scanner-stop').disabled  = true;
+});
+
+document.getElementById('btn-scanner-scan-now').addEventListener('click', () => {
+  const count = cleanAllLeaks();
+  if (count === 0) {
+    log('[LeakScanner] Scan complete — no leaked branches detected', 'info');
+    return;
+  }
+  refresh();
+});
+
+document.getElementById('btn-scanner-clean-all').addEventListener('click', () => {
+  const count = cleanAllLeaks();
+  if (count === 0) {
+    log('[LeakScanner] Tree scan complete — no leaks found', 'info');
+  } else {
+    log(`[LeakScanner] Cleaned ${count} leaked branch${count !== 1 ? 'es' : ''} from tree`, 'warn');
+    refresh();
+  }
 });
 
 // ════════════════════════════════════════════════════════════════════════════════

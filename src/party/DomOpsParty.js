@@ -49,9 +49,9 @@ export class DomOpsPartyL17 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 17); }
 
   /** @param {string} name @returns {DomOpsPartyL18} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL18(name, this));
+    return this._addBranch(name, new DomOpsPartyL18(name, this), owner);
   }
 }
 
@@ -62,9 +62,9 @@ export class DomOpsPartyL16 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 16); }
 
   /** @param {string} name @returns {DomOpsPartyL17} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL17(name, this));
+    return this._addBranch(name, new DomOpsPartyL17(name, this), owner);
   }
 }
 
@@ -75,9 +75,9 @@ export class DomOpsPartyL15 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 15); }
 
   /** @param {string} name @returns {DomOpsPartyL16} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL16(name, this));
+    return this._addBranch(name, new DomOpsPartyL16(name, this), owner);
   }
 }
 
@@ -88,9 +88,9 @@ export class DomOpsPartyL14 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 14); }
 
   /** @param {string} name @returns {DomOpsPartyL15} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL15(name, this));
+    return this._addBranch(name, new DomOpsPartyL15(name, this), owner);
   }
 }
 
@@ -101,9 +101,9 @@ export class DomOpsPartyL13 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 13); }
 
   /** @param {string} name @returns {DomOpsPartyL14} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL14(name, this));
+    return this._addBranch(name, new DomOpsPartyL14(name, this), owner);
   }
 }
 
@@ -114,9 +114,9 @@ export class DomOpsPartyL12 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 12); }
 
   /** @param {string} name @returns {DomOpsPartyL13} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL13(name, this));
+    return this._addBranch(name, new DomOpsPartyL13(name, this), owner);
   }
 }
 
@@ -127,9 +127,9 @@ export class DomOpsPartyL11 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 11); }
 
   /** @param {string} name @returns {DomOpsPartyL12} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL12(name, this));
+    return this._addBranch(name, new DomOpsPartyL12(name, this), owner);
   }
 }
 
@@ -140,9 +140,9 @@ export class DomOpsPartyL10 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 10); }
 
   /** @param {string} name @returns {DomOpsPartyL11} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL11(name, this));
+    return this._addBranch(name, new DomOpsPartyL11(name, this), owner);
   }
 }
 
@@ -153,9 +153,9 @@ export class DomOpsPartyL9 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 9); }
 
   /** @param {string} name @returns {DomOpsPartyL10} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL10(name, this));
+    return this._addBranch(name, new DomOpsPartyL10(name, this), owner);
   }
 }
 
@@ -166,9 +166,9 @@ export class DomOpsPartyL8 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 8); }
 
   /** @param {string} name @returns {DomOpsPartyL9} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL9(name, this));
+    return this._addBranch(name, new DomOpsPartyL9(name, this), owner);
   }
 }
 
@@ -179,9 +179,9 @@ export class DomOpsPartyL7 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 7); }
 
   /** @param {string} name @returns {DomOpsPartyL8} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL8(name, this));
+    return this._addBranch(name, new DomOpsPartyL8(name, this), owner);
   }
 }
 
@@ -192,9 +192,9 @@ export class DomOpsPartyL6 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 6); }
 
   /** @param {string} name @returns {DomOpsPartyL7} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL7(name, this));
+    return this._addBranch(name, new DomOpsPartyL7(name, this), owner);
   }
 }
 
@@ -205,9 +205,9 @@ export class DomOpsPartyL5 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 5); }
 
   /** @param {string} name @returns {DomOpsPartyL6} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL6(name, this));
+    return this._addBranch(name, new DomOpsPartyL6(name, this), owner);
   }
 }
 
@@ -218,9 +218,9 @@ export class DomOpsPartyL4 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 4); }
 
   /** @param {string} name @returns {DomOpsPartyL5} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL5(name, this));
+    return this._addBranch(name, new DomOpsPartyL5(name, this), owner);
   }
 }
 
@@ -231,9 +231,9 @@ export class DomOpsPartyL3 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 3); }
 
   /** @param {string} name @returns {DomOpsPartyL4} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL4(name, this));
+    return this._addBranch(name, new DomOpsPartyL4(name, this), owner);
   }
 }
 
@@ -244,9 +244,9 @@ export class DomOpsPartyL2 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 2); }
 
   /** @param {string} name @returns {DomOpsPartyL3} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL3(name, this));
+    return this._addBranch(name, new DomOpsPartyL3(name, this), owner);
   }
 }
 
@@ -257,9 +257,9 @@ export class DomOpsPartyL1 extends _DomOpsPartyBase {
   constructor(name, parent) { super(name, parent, 1); }
 
   /** @param {string} name @returns {DomOpsPartyL2} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL2(name, this));
+    return this._addBranch(name, new DomOpsPartyL2(name, this), owner);
   }
 }
 
@@ -275,9 +275,9 @@ export class DomOpsParty extends _DomOpsPartyBase {
   constructor(name = 'root') { super(name, null, 0); }
 
   /** @param {string} name @returns {DomOpsPartyL1} */
-  createBranch(name) {
+  createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL1(name, this));
+    return this._addBranch(name, new DomOpsPartyL1(name, this), owner);
   }
 }
 

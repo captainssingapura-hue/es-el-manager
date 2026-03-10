@@ -19,7 +19,7 @@ export class LeakyComponent {
     this.#branchName = `leak-${++_seq}`;
     // Branch created — but dissolve() is never called, so the branch and
     // its elements persist even after this instance goes out of scope.
-    this.#branch = domOpsParty.createBranch(this.#branchName);
+    this.#branch = domOpsParty.createBranch(this.#branchName, this);
   }
 
   get branchName() { return this.#branchName; }

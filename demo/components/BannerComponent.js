@@ -19,7 +19,7 @@ export class BannerComponent {
   #branch = null;
 
   constructor() {
-    this.#branch = domOpsParty.createBranch('banner');
+    this.#branch = domOpsParty.createBranch('banner', this);
   }
 
   get branch() { return this.#branch; }
