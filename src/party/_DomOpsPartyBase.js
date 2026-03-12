@@ -93,6 +93,22 @@ export class _DomOpsPartyBase {
   /** Distance from the root singleton (0 = root, 18 = deepest). @returns {number} */
   get depth() { return this.#depth; }
 
+  // ── Activation gate ───────────────────────────────────────────────────────
+
+  /**
+   * Throws if this branch has not been activated via activate(owner).
+   * Called by createElement() and createBranch() to enforce the rule that
+   * every branch must have an owner before it can do work.
+   */
+  #assertActivated() {
+    if (this.#ownerRef === null) {
+      throw new Error(
+        `[DomOpsParty] Branch "${this.#name}" has not been activated. ` +
+        `Call branch.activate(owner) before using it.`
+      );
+    }
+  }
+
   // ── Element management ────────────────────────────────────────────────────
 
   /**
@@ -105,11 +121,13 @@ export class _DomOpsPartyBase {
    * @param {string} tagName - Valid HTML tag name.
    * @returns {HTMLElement}
    *
+   * @throws {Error}      If the branch has not been activated.
    * @throws {TypeError}  If name or tagName are not non-empty strings, or name
    *                      contains invalid characters.
    * @throws {RangeError} If name is already in use on this branch.
    */
   createElement(name, tagName) {
+    this.#assertActivated();
     if (typeof name !== 'string' || name.trim() === '') {
       throw new TypeError(
         `[DomOpsParty] createElement: name must be a non-empty string. ` +
@@ -282,6 +300,7 @@ export class _DomOpsPartyBase {
    * @throws {RangeError} If name contains invalid characters or already exists.
    */
   _validateBranchName(name) {
+    this.#assertActivated();
     if (typeof name !== 'string' || name.trim() === '') {
       throw new TypeError(
         `[DomOpsParty] createBranch: Branch name must be a non-empty string. ` +
@@ -302,13 +321,29 @@ export class _DomOpsPartyBase {
   }
 
   /**
-   * Registers the owner of this branch as a weak reference.
-   * When the owner is garbage-collected, isOwnerAlive returns false,
-   * signalling that this branch has been leaked.
+   * Binds an owner to this branch (set-once).
    *
-   * @param {object} owner - The component or object responsible for this branch.
+   * Intended call site: the component constructor, immediately after
+   * receiving the branch from its parent:
+   *
+   *   this.#branch = parentBranch.createBranch(id);
+   *   this.#branch.activate(this);
+   *
+   * Once activated, isOwnerAlive tracks the owner via WeakRef.
+   * Calling activate() a second time throws — ownership is immutable.
+   *
+   * Activation is optional: root and utility branches that have no
+   * component owner work fine without it.
+   *
+   * @param {object} owner - The component responsible for this branch.
+   * @throws {Error} If the branch has already been activated.
    */
-  _setOwner(owner) {
+  activate(owner) {
+    if (this.#ownerRef !== null) {
+      throw new Error(
+        `[DomOpsParty] activate: Branch "${this.#name}" is already activated.`
+      );
+    }
     this.#ownerRef = new WeakRef(owner);
   }
 
@@ -317,15 +352,16 @@ export class _DomOpsPartyBase {
    * constructor, registers it in this node's branch map, and returns it.
    * Call after _validateBranchName.
    *
+   * The returned branch is unactivated. The caller (or the component that
+   * receives the branch) should call branch.activate(owner) to bind an owner.
+   *
    * @param {string}                          name
    * @param {new (name: string, deregister: () => void) => _DomOpsPartyBase} BranchClass
-   * @param {object|null}                     [owner=null]
    * @returns {_DomOpsPartyBase}
    */
-  _addBranch(name, BranchClass, owner = null) {
+  _addBranch(name, BranchClass) {
     const branches = this.#branches;
     const branch = new BranchClass(name, () => branches.delete(name));
-    if (owner !== null) branch._setOwner(owner);
     branches.set(name, branch);
     return branch;
   }

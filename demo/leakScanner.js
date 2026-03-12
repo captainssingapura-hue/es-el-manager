@@ -2,7 +2,7 @@
  * leakScanner.js
  *
  * Detects leaked party branches by checking whether the owner registered with
- * each branch (via createBranch(name, owner)) is still reachable.
+ * each branch (via branch.activate(owner)) is still reachable.
  *
  * A branch is considered leaked when:
  *   branch.isOwnerAlive === false

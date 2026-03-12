@@ -19,7 +19,8 @@ export class BannerComponent {
   #branch = null;
 
   constructor() {
-    this.#branch = domOpsParty.createBranch('banner', this);
+    this.#branch = domOpsParty.createBranch('banner');
+    this.#branch.activate(this);
   }
 
   get branch() { return this.#branch; }
