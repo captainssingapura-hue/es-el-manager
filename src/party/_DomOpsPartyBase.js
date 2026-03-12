@@ -5,7 +5,7 @@
  * Not part of the public API — import from DomOpsParty.js instead.
  *
  * Each party node:
- *  - Has a name, depth, and optional parent.
+ *  - Has a name and depth.
  *  - Owns a set of named DOM elements created via createElement().
  *    This is the only sanctioned way to create DOM elements — no component
  *    may call document.createElement() directly.
@@ -32,8 +32,8 @@ export class _DomOpsPartyBase {
   /** @type {number} */
   #depth;
 
-  /** @type {_DomOpsPartyBase|null} */
-  #parent;
+  /** @type {(() => void)|null} — callback to remove this branch from its parent's map */
+  #deregister;
 
   /** @type {Map<string, HTMLElement>} — elements owned by this branch */
   #elements;
@@ -45,11 +45,12 @@ export class _DomOpsPartyBase {
   #ownerRef = null;
 
   /**
-   * @param {string}               name   - Branch label. [a-zA-Z0-9_-]+
-   * @param {_DomOpsPartyBase|null} parent - Parent node; null for the root singleton.
-   * @param {number}               depth  - Distance from root (0 = root, 18 = max).
+   * @param {string}         name       - Branch label. [a-zA-Z0-9_-]+
+   * @param {number}         depth      - Distance from root (0 = root, 18 = max).
+   * @param {(() => void)|null} [deregister=null] - Callback to remove this
+   *        branch from its parent's map. Supplied by _addBranch(); null for root.
    */
-  constructor(name, parent, depth) {
+  constructor(name, depth, deregister = null) {
     if (typeof name !== 'string' || name.trim() === '') {
       throw new TypeError(
         `[DomOpsParty] name must be a non-empty string. Received: ${JSON.stringify(name)}`
@@ -62,11 +63,11 @@ export class _DomOpsPartyBase {
       );
     }
 
-    this.#name     = name;
-    this.#depth    = depth;
-    this.#parent   = parent ?? null;
-    this.#elements = new Map();
-    this.#branches = new Map();
+    this.#name       = name;
+    this.#depth      = depth;
+    this.#deregister = deregister;
+    this.#elements   = new Map();
+    this.#branches   = new Map();
   }
 
   // ── Getters ───────────────────────────────────────────────────────────────
@@ -91,9 +92,6 @@ export class _DomOpsPartyBase {
 
   /** Distance from the root singleton (0 = root, 18 = deepest). @returns {number} */
   get depth() { return this.#depth; }
-
-  /** Parent party node, or null if this is the root. @returns {_DomOpsPartyBase|null} */
-  get parent() { return this.#parent; }
 
   // ── Element management ────────────────────────────────────────────────────
 
@@ -235,7 +233,7 @@ export class _DomOpsPartyBase {
    */
   dissolve() {
     this._dissolveTree();
-    this.#parent?._removeBranch(this.#name);
+    this.#deregister?.();
   }
 
   // ── Inspection ────────────────────────────────────────────────────────────
@@ -277,17 +275,6 @@ export class _DomOpsPartyBase {
   }
 
   /**
-   * Removes a named branch from this node's branch map without triggering
-   * any further cleanup. Called by dissolve() on the parent after _dissolveTree()
-   * has already run on the child.
-   *
-   * @param {string} name
-   */
-  _removeBranch(name) {
-    this.#branches.delete(name);
-  }
-
-  /**
    * Validates a branch name and asserts it is not already in use at this level.
    *
    * @param {string} name
@@ -326,18 +313,20 @@ export class _DomOpsPartyBase {
   }
 
   /**
-   * Stores a newly created branch. Call after _validateBranchName.
-   * If owner is provided, registers it as the branch's weak owner reference.
-   * Returns the branch so createBranch overrides can return it in one line.
+   * Constructs a child branch with a deregister closure baked into its
+   * constructor, registers it in this node's branch map, and returns it.
+   * Call after _validateBranchName.
    *
-   * @param {string}           name
-   * @param {_DomOpsPartyBase} branch
-   * @param {object|null}      [owner=null]
+   * @param {string}                          name
+   * @param {new (name: string, deregister: () => void) => _DomOpsPartyBase} BranchClass
+   * @param {object|null}                     [owner=null]
    * @returns {_DomOpsPartyBase}
    */
-  _addBranch(name, branch, owner = null) {
+  _addBranch(name, BranchClass, owner = null) {
+    const branches = this.#branches;
+    const branch = new BranchClass(name, () => branches.delete(name));
     if (owner !== null) branch._setOwner(owner);
-    this.#branches.set(name, branch);
+    branches.set(name, branch);
     return branch;
   }
 }

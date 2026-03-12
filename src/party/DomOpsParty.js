@@ -38,228 +38,228 @@ import { _DomOpsPartyBase } from './_DomOpsPartyBase.js';
 // createBranch is inherited from _DomOpsPartyBase and always throws RangeError.
 
 export class DomOpsPartyL18 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 18); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 18, deregister); }
 }
 
 // ── Level 17 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL17 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 17); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 17, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL18} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL18(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL18, owner);
   }
 }
 
 // ── Level 16 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL16 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 16); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 16, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL17} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL17(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL17, owner);
   }
 }
 
 // ── Level 15 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL15 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 15); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 15, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL16} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL16(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL16, owner);
   }
 }
 
 // ── Level 14 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL14 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 14); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 14, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL15} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL15(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL15, owner);
   }
 }
 
 // ── Level 13 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL13 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 13); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 13, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL14} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL14(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL14, owner);
   }
 }
 
 // ── Level 12 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL12 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 12); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 12, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL13} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL13(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL13, owner);
   }
 }
 
 // ── Level 11 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL11 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 11); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 11, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL12} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL12(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL12, owner);
   }
 }
 
 // ── Level 10 ──────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL10 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 10); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 10, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL11} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL11(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL11, owner);
   }
 }
 
 // ── Level 9 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL9 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 9); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 9, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL10} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL10(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL10, owner);
   }
 }
 
 // ── Level 8 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL8 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 8); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 8, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL9} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL9(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL9, owner);
   }
 }
 
 // ── Level 7 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL7 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 7); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 7, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL8} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL8(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL8, owner);
   }
 }
 
 // ── Level 6 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL6 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 6); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 6, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL7} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL7(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL7, owner);
   }
 }
 
 // ── Level 5 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL5 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 5); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 5, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL6} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL6(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL6, owner);
   }
 }
 
 // ── Level 4 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL4 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 4); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 4, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL5} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL5(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL5, owner);
   }
 }
 
 // ── Level 3 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL3 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 3); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 3, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL4} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL4(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL4, owner);
   }
 }
 
 // ── Level 2 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL2 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 2); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 2, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL3} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL3(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL3, owner);
   }
 }
 
 // ── Level 1 ───────────────────────────────────────────────────────────────────
 
 export class DomOpsPartyL1 extends _DomOpsPartyBase {
-  /** @param {string} name @param {_DomOpsPartyBase} parent */
-  constructor(name, parent) { super(name, parent, 1); }
+  /** @param {string} name @param {(() => void)|null} [deregister=null] */
+  constructor(name, deregister) { super(name, 1, deregister); }
 
   /** @param {string} name @returns {DomOpsPartyL2} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL2(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL2, owner);
   }
 }
 
@@ -272,12 +272,12 @@ export class DomOpsPartyL1 extends _DomOpsPartyBase {
  */
 export class DomOpsParty extends _DomOpsPartyBase {
   /** @param {string} [name='root'] */
-  constructor(name = 'root') { super(name, null, 0); }
+  constructor(name = 'root') { super(name, 0); }
 
   /** @param {string} name @returns {DomOpsPartyL1} */
   createBranch(name, owner = null) {
     this._validateBranchName(name);
-    return this._addBranch(name, new DomOpsPartyL1(name, this), owner);
+    return this._addBranch(name, DomOpsPartyL1, owner);
   }
 }
 
