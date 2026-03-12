@@ -1,142 +1,114 @@
 # DomOpsParty
 
-A singleton DOM element manager for ES6 module-based applications.
-All DOM element creation flows through a branch hierarchy. Every element has a named owner, and cleanup is a single call — no manual element removal needed.
+A tree-structured DOM element manager for vanilla JavaScript applications.
+
+Every DOM element in your application is created through a named branch in a single hierarchy. Every element has an owner. Cleanup is one call. Leaks are detectable at runtime.
+
+No framework. No build step. Pure ES6 modules.
 
 ---
 
-## Why
+## The Problem
 
-Calling `document.createElement` directly scatters element lifecycle across the codebase. There is no central record of what exists, who owns it, or whether it was ever cleaned up. `DomOpsParty` fixes this by making creation and destruction explicit, auditable, and enforced at the branch level.
+In any non-trivial vanilla JS application, DOM elements are created everywhere — inside components, inside helpers, inside callbacks. There is no record of what exists, who created it, or whether it was cleaned up. The larger the codebase, the worse it gets:
+
+- **Scattered lifecycle** — `document.createElement()` calls are spread across dozens of files. No single place knows what is alive.
+- **Silent leaks** — a component goes out of scope, but its elements stay in the DOM. Nothing reports this. The user sees stale UI or degraded performance.
+- **Teardown is manual and fragile** — every component must remember to `.remove()` each element it created. Miss one, and it lingers. Nest components, and teardown order becomes a source of bugs.
+- **Ownership is implicit** — there is no way to ask "which component created this element?" at runtime.
+
+These problems compound when components are reusable and nested — exactly the case where you need the most discipline and get the least help from the platform.
 
 ---
 
-## Core Concepts
+## How DomOpsParty Solves This
 
-### Branch — the element owner
-
-A branch is a named node in the party tree. It is the only entity that can create DOM elements. Components receive a branch at construction time and use it exclusively for all DOM work.
+### 1. One sanctioned way to create elements
 
 ```js
-const branch = domOpsParty.createBranch('my-widget');
-const el     = branch.createElement('root', 'div');
+const el = branch.createElement('title', 'h2');
 ```
 
-Names for both branches and elements must match `[a-zA-Z0-9_-]+`.
+`document.createElement()` is never called directly. Every element is registered the moment it is created, under a name, on a branch. If a name is already taken, it throws. If the branch has not been activated, it throws. There is no silent failure path.
 
----
+### 2. Tree-structured ownership
 
-### `branch.createElement(name, tagName)` — the only sanctioned DOM API
+Branches form a tree that mirrors your component hierarchy:
 
-No component may call `document.createElement()` directly. All elements must be created through a branch.
+```
+domOpsParty (root)
+  ├── banner          ← BannerComponent
+  ├── a1b2c3d4        ← CardComponent (top-level)
+  │     ├── x9y8z7w6  ← CardComponent (sub-card)
+  │     │     └── …
+  │     └── p3q4r5s6  ← CardComponent (sub-card)
+  └── leak-1          ← LeakyComponent (orphaned)
+```
 
-- `name` — unique within the branch, `[a-zA-Z0-9_-]+`
-- `tagName` — any valid HTML tag
+Each branch knows its name, depth, owned elements, and child branches. The tree is inspectable at any time — you can walk it, render it, or scan it for leaks.
 
-Returns the `HTMLElement`. Throws `TypeError` on empty/invalid name, `RangeError` on duplicate name within the same branch.
-
----
-
-### `branch.dissolve()` — single-call teardown
-
-`dissolve()` is the complete teardown primitive. One call:
-
-1. Depth-first dissolves all sub-branches.
-2. Calls `.remove()` on every owned DOM element at every node.
-3. Clears all element and branch maps.
-4. Removes the branch from its parent.
-
-After `dissolve()`, null the branch reference — the object must not be used again.
+### 3. Single-call teardown
 
 ```js
 branch.dissolve();
-branch = null;
 ```
 
----
+One call tears down everything rooted at that branch: depth-first, it dissolves every sub-branch, removes every element from the DOM, and deregisters the branch from its parent. No manual element removal. No teardown ordering bugs.
 
-### `domOpsParty` — the root singleton
+### 4. Ownership activation and leak detection
 
-The root party is the "big boss". It owns the top-level layout zones and is the entry point for creating the first-level branches.
+Every branch must be activated with an owner before it can create elements:
 
 ```js
-import { domOpsParty } from './src/party/DomOpsParty.js';
-
-// Root party creates managed layout zones — no raw document.createElement
-const renderZone = domOpsParty.createElement('render-zone', 'div');
-document.getElementById('app').appendChild(renderZone);
+const branch = domOpsParty.createBranch('my-widget');
+branch.activate(this);  // set-once — binds a WeakRef to the owner
 ```
+
+Activation is enforced: `createElement()` and `createBranch()` throw if the branch has not been activated. The owner is tracked via `WeakRef`, which means the system can detect when an owner has been garbage-collected while its branch is still alive — a leak.
+
+```js
+branch.isOwnerAlive  // null = no owner, true = alive, false = leaked
+```
+
+The included `leakScanner` walks the tree periodically and reports (or auto-dissolves) leaked branches.
 
 ---
 
-## File Structure
+## Design Rationale
 
-```
-es-el-manager/
-├── src/
-│   └── party/
-│       ├── _DomOpsPartyBase.js   Internal base class — all branch logic lives here
-│       └── DomOpsParty.js        Root singleton + 18 typed level classes
-│
-└── demo/
-    ├── components/
-    │   ├── CardComponent.js      Multi-instance component; close = branch.dissolve()
-    │   ├── BannerComponent.js    Single-instance component; destroy = branch.dissolve()
-    │   └── LeakyComponent.js     ⚠ Bad example: dissolve() never called
-    ├── partyTree.js              Live party hierarchy renderer
-    ├── demo.html                 Interactive demo
-    ├── demo.js                   Demo wiring — ES6 module
-    └── demo.css                  Demo styles
-```
+### Why a tree, not a flat registry?
 
----
+A flat `Map<id, element>` answers "does this element exist?" but not "what else belongs to the same component?" and not "what happens when the parent component is destroyed?" The tree structure means `dissolve()` on any node cleans up the entire subtree — matching how component hierarchies actually work.
 
-## API Reference
+### Why set-once activation instead of passing owner at creation?
 
-### Element operations
+When a parent creates a branch for a child component, the child does not exist yet. The branch must be created first, then passed to the child's constructor, where the child calls `activate(this)`. This two-step pattern avoids giving the child access to the parent's branch (which would break encapsulation) while still binding ownership at the earliest possible moment.
 
-| Method / Property | Description |
-|---|---|
-| `branch.createElement(name, tagName)` | Creates a `<tagName>` element, registers it under `name`, returns it. Throws on invalid or duplicate name. |
-| `branch.getElement(name)` | Returns a previously created element by name, or `null`. |
-| `branch.listElements()` | Returns `{ name, tagName }[]` for all elements on this branch (not sub-branches). |
-| `branch.elementCount` | Number of elements directly owned by this branch. |
+### Why a depth limit?
 
-### Branch operations
+The 19-level type hierarchy (L0 through L18) is a deliberate constraint. In practice, component nesting beyond 5-6 levels is a design smell. The hard cap at 18 catches runaway recursion at compile time (via the type system) rather than at runtime.
 
-| Method / Property | Description |
-|---|---|
-| `branch.createBranch(name)` | Creates and returns a named child branch at `depth + 1`. Max depth 18. |
-| `branch.getBranch(name)` | Returns a child branch by name, or `null`. |
-| `branch.hasBranch(name)` | `true` if a child branch with that name exists. |
-| `branch.listBranches()` | Names of all direct child branches. |
-| `branch.branchCount` | Number of direct child branches. |
-| `branch.dissolveBranch(name)` | Dissolves a named child branch and its entire subtree. |
-| `branch.dissolve()` | Dissolves this branch and removes it from its parent. |
+### Why a singleton root?
 
-### Inspection
+The root `domOpsParty` is activated with a frozen sentinel (`partyChief`) so that every branch in the system follows the same activation rule — no special cases. The singleton also provides a single entry point for tree inspection, leak scanning, and debugging.
 
-| Property | Description |
-|---|---|
-| `branch.name` | Human-readable label. |
-| `branch.depth` | Distance from root (0 = root, 18 = deepest). |
-| `branch.parent` | Parent branch node, or `null` for the root. |
-| `branch.toString()` | `DomOpsParty("name", depth=N, elements=N, branches=N)` |
+### Why no framework integration?
+
+DomOpsParty operates below the framework layer. It manages raw DOM elements and their lifecycle. This makes it usable with any rendering approach — vanilla JS, Web Components, or as a managed layer beneath a framework — without creating coupling.
 
 ---
 
-## Usage Pattern
+## Quick Start
 
 ```js
 import { domOpsParty } from './src/party/DomOpsParty.js';
 
 class ProfileCard {
   #branch = null;
-  #onClose;
 
-  constructor(cardId, onClose) {
-    this.#onClose = onClose;
-    this.#branch  = domOpsParty.createBranch(cardId);
+  constructor(cardId) {
+    this.#branch = domOpsParty.createBranch(cardId);
+    this.#branch.activate(this);
   }
 
   mount(zone) {
@@ -146,25 +118,126 @@ class ProfileCard {
     const close   = this.#branch.createElement('close',   'button');
 
     close.textContent = '×';
-    close.addEventListener('click', () => this.#close());
+    close.addEventListener('click', () => this.destroy());
 
     wrapper.append(title, body, close);
     zone.appendChild(wrapper);
   }
 
-  #close() {
+  destroy() {
     this.#branch?.dissolve();
     this.#branch = null;
-    this.#onClose?.();
   }
 }
+```
 
-// Mount
-const card = new ProfileCard('profile-1', () => console.log('closed'));
-card.mount(document.getElementById('app'));
+### Nested components
 
-// Later — one call cleans up every element and the branch
-// (or click the close button — same path)
+Parent creates a branch and passes it to the child. The child activates it.
+
+```js
+// Inside parent component
+#spawnChild() {
+  const childId     = crypto.randomUUID().slice(0, 8);
+  const childBranch = this.#branch.createBranch(childId);
+  const child       = new ChildWidget(childId, childBranch);
+  child.mount(this.#childrenZone);
+}
+
+// Inside ChildWidget constructor
+constructor(id, branch) {
+  this.#branch = branch;
+  this.#branch.activate(this);
+}
+```
+
+Dissolving the parent automatically dissolves all child branches. The child never has access to the parent's branch.
+
+---
+
+## API Reference
+
+### Element Operations
+
+| Method / Property | Description |
+|---|---|
+| `branch.createElement(name, tagName)` | Creates a `<tagName>`, registers it under `name`, returns it. Throws on invalid/duplicate name or if branch is not activated. |
+| `branch.getElement(name)` | Returns element by name, or `null`. |
+| `branch.listElements()` | Returns `{ name, tagName }[]` for all elements on this branch. |
+| `branch.elementCount` | Number of elements owned by this branch. |
+
+### Branch Operations
+
+| Method / Property | Description |
+|---|---|
+| `branch.createBranch(name)` | Creates a child branch at `depth + 1`. Max depth 18. |
+| `branch.getBranch(name)` | Returns child branch by name, or `null`. |
+| `branch.hasBranch(name)` | `true` if a child branch exists. |
+| `branch.listBranches()` | Names of all direct child branches. |
+| `branch.branchCount` | Number of direct child branches. |
+| `branch.dissolveBranch(name)` | Dissolves a named child branch and its subtree. |
+| `branch.dissolve()` | Dissolves this branch, its subtree, and deregisters from parent. |
+
+### Ownership
+
+| Method / Property | Description |
+|---|---|
+| `branch.activate(owner)` | Binds an owner (set-once). Required before any element/branch creation. |
+| `branch.isOwnerAlive` | `null` (no owner), `true` (owner alive), `false` (owner GC'd — leak). |
+
+### Inspection
+
+| Property | Description |
+|---|---|
+| `branch.name` | Branch label. |
+| `branch.depth` | Distance from root (0 = root, 18 = deepest). |
+| `branch.toString()` | `DomOpsParty("name", depth=N, elements=N, branches=N)` |
+
+---
+
+## Leak Detection
+
+```js
+import { scanOnce, startLeakScanner } from './demo/leakScanner.js';
+
+// One-shot scan
+const leaks = scanOnce(domOpsParty);
+
+// Periodic background scan with auto-dissolve
+const scanner = startLeakScanner(domOpsParty, {
+  intervalMs:   5000,
+  autoDissolve: true,
+  onLeaksFound: (leaks) => console.warn('Leaked branches:', leaks),
+});
+
+// Stop scanning
+scanner.stop();
+```
+
+A branch is considered leaked when `isOwnerAlive === false` — the owner was registered via `activate()` but has since been garbage-collected, meaning the component went out of scope without calling `dissolve()`.
+
+---
+
+## File Structure
+
+```
+es-el-manager/
+├── src/
+│   └── party/
+│       ├── _DomOpsPartyBase.js   Base class — element tracking, branch management,
+│       │                         activation gate, dissolve logic
+│       └── DomOpsParty.js        Root singleton + 18 typed level classes (L1–L18)
+│
+└── demo/
+    ├── components/
+    │   ├── CardComponent.js      Multi-instance, nestable. Self-closes via dissolve().
+    │   ├── BannerComponent.js    Single-instance. External destroy() via dissolve().
+    │   └── LeakyComponent.js     ⚠ Intentional bad example — dissolve() never called.
+    ├── leakScanner.js            WeakRef-based leak detection (scan + auto-dissolve)
+    ├── partyTree.js              Live party hierarchy renderer
+    ├── demo.html                 Interactive demo
+    ├── demo.js                   Demo wiring
+    └── demo.css                  Demo styles
 ```
 
 ---
@@ -172,53 +245,41 @@ card.mount(document.getElementById('app'));
 ## Lifecycle
 
 ```
-createBranch('widget')
+createBranch('widget')  →  branch.activate(this)
       │
       ├── branch.createElement('wrapper', 'div')
       ├── branch.createElement('title',   'h2')
-      └── branch.createElement('close',   'button')
-            │
-            ▼
-      branch.dissolve()
-            │
-            ├── _releaseAll()  → wrapper.remove(), title.remove(), close.remove()
-            └── removed from parent branch map
+      ├── branch.createBranch('child-1')  →  activate(childComponent)
+      │     ├── createElement('icon', 'span')
+      │     └── createElement('label', 'p')
+      │
+      ▼
+branch.dissolve()
+      │
+      ├── child-1._dissolveTree()
+      │     ├── icon.remove(), label.remove()
+      │     └── clear element map
+      ├── wrapper.remove(), title.remove()
+      ├── clear element map
+      └── deregister from parent
 ```
-
-Components can also nest sub-branches for sub-components. `dissolve()` on any ancestor node tears down the entire subtree in one call — depth-first, no manual cleanup needed.
-
----
-
-## Memory Leak Prevention
-
-The design makes leaks structurally difficult:
-
-- **No raw `document.createElement`** — the only way to create a DOM element is through `branch.createElement()`, which registers it immediately.
-- **Explicit dissolve contract** — before a branch goes out of scope, `branch.dissolve()` must be called. This is a design-time convention enforced by code review, not a runtime lock.
-- **Depth-first teardown** — `dissolve()` walks the entire subtree before releasing the parent's elements, so child wrappers are always detached before their ancestors. Calling `.remove()` on an already-detached element is a safe no-op.
-- **Party tree** — the live tree view in the demo makes orphaned branches visible the moment they occur.
-
-The only way to produce a persistent leak is to hold a branch reference, create elements on it, and then discard the reference without calling `dissolve()` — exactly what `LeakyComponent` demonstrates.
 
 ---
 
 ## Demo
 
-Serve the project root from any static web server and open `demo/demo.html`.
+Serve the project root and open `demo/demo.html`.
 
 ```bash
-# Python
 python3 -m http.server 8080
-
-# Node
+# or
 npx serve .
 ```
 
 The demo includes:
 
-- **CardComponent** — spawn multiple cards, each with its own UUID-prefixed branch. Close buttons call `branch.dissolve()` directly, and the party tree updates live.
-- **BannerComponent** — single-instance component with show/hide lifecycle.
-- **Custom element** — create any element with a custom name and tag type on a dedicated branch.
-- **LeakyComponent** — demonstrates what an orphaned branch looks like in the party tree. The audit button dissolves all leaked branches.
-- **Error scenarios** — duplicate element name, invalid name characters, empty name, and invalid branch name — all showing the exact error thrown.
-- **Party tree** — live hierarchical view of every branch, element count per node, and depth badges — updated on every operation.
+- **Cards** — spawn, nest up to 5 levels deep, close any card and watch the subtree dissolve.
+- **Banner** — single-instance show/hide lifecycle.
+- **Leak demo** — create orphaned branches, then audit and dissolve them.
+- **Error scenarios** — duplicate names, invalid characters, unactivated branches.
+- **Party tree** — live hierarchical view updated on every operation.
