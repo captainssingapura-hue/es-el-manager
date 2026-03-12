@@ -37,16 +37,18 @@ export class CardComponent {
   /**
    * @param {string} cardId - Unique identifier; becomes the branch name.
    * @param {object} [opts]
-   * @param {number}           [opts.depth=0]      - Nesting depth; controls sub-card button.
-   * @param {_DomOpsPartyBase} [opts.parentBranch] - Branch to nest under (defaults to root).
+   * @param {number}           [opts.depth=0]  - Nesting depth; controls sub-card button.
+   * @param {_DomOpsPartyBase} [opts.branch]   - Pre-created branch (parent creates it).
+   *                                             Defaults to a new root-level branch.
    */
-  constructor(cardId, { depth = 0, parentBranch = null } = {}) {
+  constructor(cardId, { depth = 0, branch = null } = {}) {
     if (typeof cardId !== 'string' || cardId.trim() === '') {
       throw new TypeError(`[CardComponent] cardId must be a non-empty string. Received: ${cardId}`);
     }
     this.#cardId = cardId;
     this.#depth  = depth;
-    this.#branch = (parentBranch ?? domOpsParty).createBranch(cardId, this);
+    this.#branch = branch ?? domOpsParty.createBranch(cardId);
+    this.#branch.activate(this);
   }
 
   get cardId() { return this.#cardId; }
@@ -99,10 +101,11 @@ export class CardComponent {
   }
 
   #spawnSubCard() {
-    const childId = crypto.randomUUID().slice(0, 8);
-    const child   = new CardComponent(childId, {
-      depth:        this.#depth + 1,
-      parentBranch: this.#branch,
+    const childId     = crypto.randomUUID().slice(0, 8);
+    const childBranch = this.#branch.createBranch(childId);
+    const child       = new CardComponent(childId, {
+      depth:  this.#depth + 1,
+      branch: childBranch,
     });
     child.mount(
       this.#branch.getElement('children-zone'),

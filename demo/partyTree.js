@@ -39,7 +39,7 @@ function renderNode(party) {
 
   header.append(icon, nameEl, depthBadge);
 
-  // Owner status dot — only shown when an owner was registered via createBranch(name, owner)
+  // Owner status dot — only shown when an owner was registered via branch.activate(owner)
   const aliveStatus = party.isOwnerAlive;
   if (aliveStatus !== null) {
     const dot = document.createElement('span');

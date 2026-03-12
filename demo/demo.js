@@ -24,6 +24,9 @@ const partyTreeContainer = domOpsParty.createElement('party-tree-container', 'di
 document.getElementById('dom-canvas').appendChild(renderZone);
 document.getElementById('party-tree-panel').appendChild(partyTreeContainer);
 
+// ── Demo owner sentinel — activates utility branches that have no component ──
+const demoOwner = Object.freeze({ toString: () => 'demoOwner' });
+
 // ── Component instances ───────────────────────────────────────────────────────
 let banner        = new BannerComponent();
 let bannerVisible = false;
@@ -136,6 +139,7 @@ document.getElementById('btn-custom-create').addEventListener('click', () => {
 
   try {
     customBranch = domOpsParty.createBranch('custom');
+    customBranch.activate(demoOwner);
 
     const wrapper = customBranch.createElement('wrapper', 'div');
     const label   = customBranch.createElement('label',   'div');
@@ -177,6 +181,7 @@ document.getElementById('btn-custom-return').addEventListener('click', () => {
 document.getElementById('btn-err-dupe').addEventListener('click', () => {
   partySeq++;
   const b = domOpsParty.createBranch(`err-${partySeq}`);
+  b.activate(demoOwner);
   try {
     b.createElement('test', 'div');
     b.createElement('test', 'span');  // duplicate name
@@ -192,6 +197,7 @@ document.getElementById('btn-err-dupe').addEventListener('click', () => {
 document.getElementById('btn-err-owner').addEventListener('click', () => {
   partySeq++;
   const b = domOpsParty.createBranch(`err-${partySeq}`);
+  b.activate(demoOwner);
   try {
     b.createElement('bad name!', 'div');
   } catch (e) {
@@ -206,6 +212,7 @@ document.getElementById('btn-err-owner').addEventListener('click', () => {
 document.getElementById('btn-err-missing').addEventListener('click', () => {
   partySeq++;
   const b = domOpsParty.createBranch(`err-${partySeq}`);
+  b.activate(demoOwner);
   try {
     b.createElement('', 'div');
   } catch (e) {
@@ -229,7 +236,8 @@ document.getElementById('btn-err-plain-obj').addEventListener('click', () => {
 document.getElementById('btn-party-join-root').addEventListener('click', () => {
   partySeq++;
   const name = `branch-${partySeq}`;
-  domOpsParty.createBranch(name);
+  const b = domOpsParty.createBranch(name);
+  b.activate(demoOwner);
   log(`domOpsParty.createBranch("${name}") → DomOpsPartyL1  |  root branches: ${domOpsParty.branchCount}`, 'ok');
   refresh();
 });
@@ -238,7 +246,8 @@ document.getElementById('btn-party-create-branch').addEventListener('click', () 
   const name = document.getElementById('party-branch-name').value.trim();
   if (!name) { log('Branch name is empty.', 'warn'); return; }
   try {
-    domOpsParty.createBranch(name);
+    const b = domOpsParty.createBranch(name);
+    b.activate(demoOwner);
     document.getElementById('party-branch-name').value = '';
     log(`domOpsParty.createBranch("${name}") → DomOpsPartyL1  |  root branches: ${domOpsParty.branchCount}`, 'ok');
     refresh();
@@ -253,7 +262,8 @@ document.getElementById('btn-party-join-branch').addEventListener('click', () =>
   partySeq++;
   const childName = `branch-${partySeq}`;
   try {
-    branch.createBranch(childName);
+    const child = branch.createBranch(childName);
+    child.activate(demoOwner);
     log(`branch("${name}").createBranch("${childName}") → DomOpsPartyL2  |  sub-branches: ${branch.branchCount}`, 'ok');
     refresh();
   } catch (e) { log(`[${e.constructor.name}] ${e.message}`, 'error'); }
