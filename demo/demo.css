@@ -794,3 +794,198 @@ header .subtitle {
   transition: opacity 0.15s, background 0.15s;
 }
 .btn-scanner-now:hover { background: #00e5a011; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   FancyConsole
+══════════════════════════════════════════════════════════════════════════════ */
+
+.fc-panel {
+  background: var(--surface);
+  border: 1px solid #00e5a033;
+  border-left: 3px solid var(--accent);
+  border-radius: 3px;
+  margin-bottom: 10px;
+  animation: slideIn 0.25s ease;
+  overflow: hidden;
+}
+
+.fc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: #0d1a15;
+}
+.fc-header-label {
+  font-size: 10px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+}
+.fc-task-count {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.fc-task-zone {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fc-task-zone:empty::after {
+  content: 'No active tasks';
+  color: var(--muted);
+  font-size: 11px;
+  font-style: italic;
+  padding: 6px 4px;
+}
+
+/* ── Task card ── */
+.fc-task-card {
+  background: #0b0c0f;
+  border: 1px solid var(--border);
+  border-left: 2px solid #5599ff;
+  border-radius: 3px;
+  animation: fadeIn 0.15s ease;
+  overflow: hidden;
+}
+.fc-task-card--done  { border-left-color: var(--accent); }
+.fc-task-card--error { border-left-color: #ff4466; }
+
+.fc-task-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #1e2129;
+}
+.fc-task-arrow {
+  font-size: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  width: 10px;
+  flex-shrink: 0;
+  text-align: center;
+  transition: color 0.15s;
+  user-select: none;
+}
+.fc-task-arrow:hover { color: var(--text); }
+.fc-task-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+
+/* ── Folded state ── */
+.fc-task-card--folded .fc-task-output { display: none; }
+.fc-task-card--folded .fc-task-card-header { border-bottom-color: transparent; }
+
+/* ── Borderless mode ── */
+.fc-panel--borderless                    { border: none; border-left: none; }
+.fc-panel--borderless .fc-header         { border-bottom-color: transparent; }
+.fc-panel--borderless .fc-task-card      { border: none; border-left: none; }
+.fc-panel--borderless .fc-task-card-header { border-bottom-color: transparent; }
+
+/* ── Status badge ── */
+.fc-task-status {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+.fc-task-status--running {
+  color: #5599ff;
+  background: #5599ff18;
+  border: 1px solid #5599ff44;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.fc-task-status--running::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid #5599ff44;
+  border-top-color: #5599ff;
+  border-radius: 50%;
+  animation: fc-spin 1s linear infinite;
+}
+@keyframes fc-spin {
+  to { transform: rotate(360deg); }
+}
+.fc-task-status--done {
+  color: var(--accent);
+  background: #00e5a018;
+  border: 1px solid #00e5a044;
+}
+.fc-task-status--error {
+  color: #ff4466;
+  background: #ff446618;
+  border: 1px solid #ff446644;
+}
+
+/* ── Task output (mini-console) ── */
+.fc-task-output {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scroll-behavior: smooth;
+}
+.fc-task-output:empty { display: none; }
+
+.fc-line {
+  display: flex;
+  gap: 8px;
+  padding: 1px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.fc-line-time {
+  color: #333844;
+  flex-shrink: 0;
+  width: 55px;
+}
+.fc-line-msg { flex: 1; }
+
+.fc-line--info .fc-line-msg { color: var(--text); }
+.fc-line--ok   .fc-line-msg { color: var(--accent); }
+.fc-line--warn .fc-line-msg { color: var(--warn); }
+.fc-line--error .fc-line-msg { color: #ff4466; }
+
+/* ── TTL fade-out ── */
+.fc-task-card--done,
+.fc-task-card--error {
+  transition: opacity 0.4s ease;
+}
+
+/* ── Toggle control ── */
+.fc-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+}
+.fc-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.fc-toggle input:disabled + span { color: var(--muted); }
+
+/* ── FancyConsole control buttons ── */
+.btn-fc {
+  background: transparent;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+}
+.btn-fc:hover { background: #00e5a011; }

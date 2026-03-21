@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FancyConsole — Live Demo</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <header>
+    <h1><span>Fancy</span>Console</h1>
+    <div class="subtitle">Multi-Task Console · DomOpsParty</div>
+    <div class="badge">Demo</div>
+  </header>
+
+  <!-- ── LEFT: CONTROLS ── -->
+  <aside class="panel-controls">
+
+    <!-- Party Status -->
+    <div>
+      <div class="section-label">Party Status</div>
+      <div class="registry-box">
+        <div class="registry-count" id="reg-count">0</div>
+        <div class="registry-count-label">elements tracked</div>
+      </div>
+    </div>
+
+    <!-- Console Lifecycle -->
+    <div>
+      <div class="section-label" style="border-color: #00e5a066; color: var(--accent);">Console Lifecycle</div>
+      <p class="party-desc">
+        Mount or destroy the FancyConsole panel. Finished tasks auto-remove
+        after the configured <em>TTL</em>.
+      </p>
+      <div class="field">
+        <label>TTL (seconds) <span class="field-hint">0 = no auto-cleanup</span></label>
+        <input type="number" id="fc-ttl" value="8" min="0" step="1" />
+      </div>
+      <button class="btn btn-create" id="btn-fc-create">Mount FancyConsole</button>
+      <button class="btn btn-return" id="btn-fc-destroy" disabled>Destroy console</button>
+    </div>
+
+    <!-- Look & Feel -->
+    <div>
+      <div class="section-label">Look &amp; Feel</div>
+      <label class="fc-toggle">
+        <input type="checkbox" id="fc-borders" checked disabled />
+        <span>Show borders</span>
+      </label>
+    </div>
+
+    <!-- Create Task -->
+    <div>
+      <div class="section-label">Create Task</div>
+      <div class="field">
+        <label>Task label <span class="field-hint">([a-zA-Z0-9_-])</span></label>
+        <input type="text" id="fc-task-label" placeholder="e.g. deploy-api" />
+      </div>
+      <button class="btn btn-fc" id="btn-fc-task" disabled>Create task</button>
+    </div>
+
+    <!-- Manual Task Control -->
+    <div>
+      <div class="section-label">Task Control</div>
+      <p class="party-desc">
+        Manually finish or fail the most recent task, or log a line to it.
+      </p>
+      <div class="field">
+        <label>Log message</label>
+        <input type="text" id="fc-log-msg" placeholder="e.g. Step 1 done" />
+      </div>
+      <div class="field">
+        <label>Log type</label>
+        <select id="fc-log-type">
+          <option value="info">info</option>
+          <option value="ok">ok</option>
+          <option value="warn">warn</option>
+          <option value="error">error</option>
+        </select>
+      </div>
+      <button class="btn btn-fc" id="btn-fc-log" disabled>Log to latest task</button>
+      <button class="btn btn-create" id="btn-fc-finish" disabled>Finish latest task</button>
+      <button class="btn btn-error" id="btn-fc-fail" disabled>Fail latest task</button>
+    </div>
+
+    <!-- Demo Scenario -->
+    <div>
+      <div class="section-label">Demo Scenarios</div>
+      <button class="btn btn-create" id="btn-fc-demo" disabled>Run build + test scenario</button>
+      <button class="btn btn-fc" id="btn-fc-demo-fail" disabled>Run deploy (fails) scenario</button>
+    </div>
+
+  </aside>
+
+  <!-- ── RIGHT: TREE + CANVAS + LOG ── -->
+  <div class="panel-right">
+
+    <!-- Party Tree -->
+    <div class="party-tree-panel" id="party-tree-panel">
+      <div class="panel-header">
+        <span class="panel-header-label">Party Tree</span>
+        <span class="panel-header-hint">branch hierarchy · elements per node</span>
+      </div>
+    </div>
+
+    <!-- DOM Render Zone -->
+    <div class="dom-canvas" id="dom-canvas">
+      <div class="panel-header">
+        <span class="panel-header-label">FancyConsole Output</span>
+        <span class="panel-header-hint">task cards with live updates</span>
+      </div>
+    </div>
+
+    <!-- Console Log -->
+    <div class="log-panel">
+      <div class="log-header">
+        <span>Console Output</span>
+        <button class="log-clear" id="btn-log-clear">clear</button>
+      </div>
+      <div id="log-output"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script type="module" src="fancy-console-demo.js"></script>
+</body>
+</html>
